@@ -47,8 +47,8 @@ export const createCustomer = async (data) => {
 
     const {name, email, contact_no, address, status_id} = data;
 
-    if (!name || typeof name !== 'string' || name.trim().length < 2) {
-        errors.push('Name is required and must be at least 2 characters.');
+    if (!name || typeof name !== 'string') {
+        errors.push('Name is required.');
     }
 
     if (email && (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
@@ -61,8 +61,8 @@ export const createCustomer = async (data) => {
         errors.push('Contact number must be at least 10 characters.');
     }
 
-    if (!address || typeof address !== 'string' || address.trim().length < 5) {
-        errors.push('Address is required and must be at least 5 characters.');
+    if (!address || typeof address !== 'string') {
+        errors.push('Address is required.');
     }
 
     if (status_id === undefined || isNaN(status_id)) {
@@ -114,8 +114,8 @@ export const updateCustomer = async (id, data) => {
     const updateData = {};
 
     if (data.name !== undefined) {
-        if (typeof data.name !== 'string' || data.name.trim().length < 2) {
-            errors.push('Name must be at least 2 characters.');
+        if (typeof data.name !== 'string') {
+            errors.push('Name must be valid.');
         } else {
             updateData.name = data.name.trim();
         }

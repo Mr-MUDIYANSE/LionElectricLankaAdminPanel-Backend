@@ -1,17 +1,12 @@
-import {
-    getAllCustomers,
-    getCustomerById,
-    deleteCustomer,
-    createCustomer, updateCustomer
-} from "../service/customer.service.js";
+import {getAllBrands, getBrandById, createBrand, updateBrand} from "../service/brand.service.js";
 
 export const getAll = async (req, res) => {
     try {
-        const customers = await getAllCustomers();
+        const brands = await getAllBrands();
         res.status(200).json({
             success: true,
-            message: 'All customers retrieved',
-            data: customers
+            message: 'All brands retrieved',
+            data: brands
         });
     } catch (err) {
         res.status(500).json({
@@ -30,16 +25,16 @@ export const getOne = async (req, res) => {
         return res.status(400).json({
             success: false,
             message: 'Invalid or missing ID parameter.',
-            errors: ['Customer ID must be a number.'],
+            errors: ['Brand ID must be a number.'],
             data: null
         });
     }
     try {
-        const customer = await getCustomerById(id);
+        const brand = await getBrandById(id);
         res.status(200).json({
             success: true,
-            message: 'Customer retrieved.',
-            data: customer
+            message: 'Brand retrieved.',
+            data: brand
         });
     } catch (err) {
         res.status(400).json({
@@ -53,11 +48,11 @@ export const getOne = async (req, res) => {
 
 export const create = async (req, res) => {
     try {
-        const customer = await createCustomer(req.body);
+        const brand = await createBrand(req.body);
         res.status(201).json({
             success: true,
-            message: 'Customer created successfully',
-            data: customer
+            message: 'Brand created successfully',
+            data: brand
         });
     } catch (err) {
         res.status(400).json({
@@ -76,44 +71,16 @@ export const update = async (req, res) => {
         return res.status(400).json({
             success: false,
             message: 'Invalid or missing ID parameter.',
-            errors: ['Customer ID must be a number.'],
+            errors: ['Brand ID must be a number.'],
             data: null
         });
     }
     try {
-        const updatedCustomer = await updateCustomer(id, req.body);
+        const updatedBrand = await updateBrand(id, req.body);
         res.status(200).json({
             success: true,
-            message: 'Customer updated successfully',
-            data: updatedCustomer
-        });
-    } catch (err) {
-        res.status(400).json({
-            success: false,
-            message: err.message,
-            errors: err.errors || [],
-            data: null
-        });
-    }
-};
-
-export const remove = async (req, res) => {
-    const id = req.params.id;
-
-    if (!id || isNaN(id)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid or missing ID parameter.',
-            errors: ['Customer ID must be a number.'],
-            data: null
-        });
-    }
-    try {
-        const deletedCustomer = await deleteCustomer(id);
-        res.status(200).json({
-            success: true,
-            message: 'Customer deleted successfully',
-            data: deletedCustomer
+            message: 'Brand updated successfully',
+            data: updatedBrand
         });
     } catch (err) {
         res.status(400).json({

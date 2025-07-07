@@ -52,17 +52,21 @@ model Status {
 }
 
 model Brand {
-  id      Int       @id @default(autoincrement())
-  name    String    @db.VarChar(45)
-  product Product[]
+  id         Int       @id @default(autoincrement())
+  name       String    @db.VarChar(45)
+  product    Product[]
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
 }
 
 model Main_Category {
-  id        Int               @id @default(autoincrement())
-  name      String            @db.VarChar(45)
-  status_id Int
-  status    Status            @relation(fields: [status_id], references: [id])
-  configs   Category_Config[]
+  id         Int               @id @default(autoincrement())
+  name       String            @db.VarChar(45)
+  status_id  Int
+  status     Status            @relation(fields: [status_id], references: [id])
+  configs    Category_Config[]
+  created_at DateTime          @default(now())
+  updated_at DateTime          @updatedAt
 }
 
 model Phase {
