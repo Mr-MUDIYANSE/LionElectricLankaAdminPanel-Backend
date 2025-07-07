@@ -15,7 +15,7 @@ CREATE TABLE "Admin" (
 );
 
 -- CreateTable
-CREATE TABLE "customer" (
+CREATE TABLE "Customer" (
     "id" SERIAL NOT NULL,
     "name" VARCHAR(20) NOT NULL,
     "email" VARCHAR(100),
@@ -25,108 +25,108 @@ CREATE TABLE "customer" (
     "updated_at" TIMESTAMP(3) NOT NULL,
     "status_id" INTEGER NOT NULL,
 
-    CONSTRAINT "customer_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Customer_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "status" (
+CREATE TABLE "Status" (
     "id" SERIAL NOT NULL,
     "status" VARCHAR(10) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "status_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Status_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "brand" (
+CREATE TABLE "Brand" (
     "id" SERIAL NOT NULL,
     "name" VARCHAR(45) NOT NULL,
 
-    CONSTRAINT "brand_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Brand_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "main_category" (
+CREATE TABLE "Main_Category" (
     "id" SERIAL NOT NULL,
     "name" VARCHAR(45) NOT NULL,
     "status_id" INTEGER NOT NULL,
 
-    CONSTRAINT "main_category_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Main_Category_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "phase" (
+CREATE TABLE "Phase" (
     "id" SERIAL NOT NULL,
     "name" VARCHAR(45) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "phase_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Phase_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "speed" (
+CREATE TABLE "Speed" (
     "id" SERIAL NOT NULL,
     "speed" VARCHAR(45) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "speed_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Speed_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "horse_power" (
+CREATE TABLE "Horse_Power" (
     "id" SERIAL NOT NULL,
     "power" VARCHAR(45) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "horse_power_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Horse_Power_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "motor_type" (
+CREATE TABLE "Motor_Type" (
     "id" SERIAL NOT NULL,
     "type" VARCHAR(45) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "motor_type_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Motor_Type_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "kilo_watt" (
+CREATE TABLE "Kilo_Watt" (
     "id" SERIAL NOT NULL,
     "watt" VARCHAR(45) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "kilo_watt_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Kilo_Watt_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "size" (
+CREATE TABLE "Size" (
     "id" SERIAL NOT NULL,
     "size" VARCHAR(45) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "size_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Size_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "gear_box_type" (
+CREATE TABLE "Gear_Box_Type" (
     "id" SERIAL NOT NULL,
     "type" VARCHAR(45) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "gear_box_type_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Gear_Box_Type_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "category_config" (
+CREATE TABLE "Category_Config" (
     "id" SERIAL NOT NULL,
     "main_category_id" INTEGER NOT NULL,
     "phase_id" INTEGER,
@@ -139,11 +139,11 @@ CREATE TABLE "category_config" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "category_config_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Category_Config_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "product" (
+CREATE TABLE "Product" (
     "id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
@@ -154,11 +154,11 @@ CREATE TABLE "product" (
     "status_id" INTEGER NOT NULL,
     "category_config_id" INTEGER NOT NULL,
 
-    CONSTRAINT "product_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "stock" (
+CREATE TABLE "Stock" (
     "id" SERIAL NOT NULL,
     "unit_price" DOUBLE PRECISION NOT NULL,
     "qty" INTEGER NOT NULL,
@@ -166,21 +166,21 @@ CREATE TABLE "stock" (
     "updated_at" TIMESTAMP(3) NOT NULL,
     "product_id" INTEGER NOT NULL,
 
-    CONSTRAINT "stock_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Stock_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "payment_method" (
+CREATE TABLE "Payment_Method" (
     "id" SERIAL NOT NULL,
     "method" VARCHAR(45) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "payment_method_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Payment_Method_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "invoice" (
+CREATE TABLE "Invoice" (
     "id" TEXT NOT NULL,
     "total_amount" DOUBLE PRECISION,
     "discount" DOUBLE PRECISION,
@@ -191,11 +191,11 @@ CREATE TABLE "invoice" (
     "customer_id" INTEGER NOT NULL,
     "payment_method_id" INTEGER NOT NULL,
 
-    CONSTRAINT "invoice_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Invoice_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "invoice_item" (
+CREATE TABLE "Invoice_Item" (
     "id" SERIAL NOT NULL,
     "qty" DOUBLE PRECISION NOT NULL,
     "selling_price" DOUBLE PRECISION NOT NULL,
@@ -204,65 +204,65 @@ CREATE TABLE "invoice_item" (
     "stock_id" INTEGER NOT NULL,
     "invoice_id" TEXT NOT NULL,
 
-    CONSTRAINT "invoice_item_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Invoice_Item_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Admin_username_key" ON "Admin"("username");
 
 -- AddForeignKey
-ALTER TABLE "Admin" ADD CONSTRAINT "Admin_status_id_fkey" FOREIGN KEY ("status_id") REFERENCES "status"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Admin" ADD CONSTRAINT "Admin_status_id_fkey" FOREIGN KEY ("status_id") REFERENCES "Status"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "customer" ADD CONSTRAINT "customer_status_id_fkey" FOREIGN KEY ("status_id") REFERENCES "status"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Customer" ADD CONSTRAINT "Customer_status_id_fkey" FOREIGN KEY ("status_id") REFERENCES "Status"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "main_category" ADD CONSTRAINT "main_category_status_id_fkey" FOREIGN KEY ("status_id") REFERENCES "status"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Main_Category" ADD CONSTRAINT "Main_Category_status_id_fkey" FOREIGN KEY ("status_id") REFERENCES "Status"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "category_config" ADD CONSTRAINT "category_config_main_category_id_fkey" FOREIGN KEY ("main_category_id") REFERENCES "main_category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Category_Config" ADD CONSTRAINT "Category_Config_main_category_id_fkey" FOREIGN KEY ("main_category_id") REFERENCES "Main_Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "category_config" ADD CONSTRAINT "category_config_phase_id_fkey" FOREIGN KEY ("phase_id") REFERENCES "phase"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Category_Config" ADD CONSTRAINT "Category_Config_phase_id_fkey" FOREIGN KEY ("phase_id") REFERENCES "Phase"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "category_config" ADD CONSTRAINT "category_config_speed_id_fkey" FOREIGN KEY ("speed_id") REFERENCES "speed"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Category_Config" ADD CONSTRAINT "Category_Config_speed_id_fkey" FOREIGN KEY ("speed_id") REFERENCES "Speed"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "category_config" ADD CONSTRAINT "category_config_horse_power_id_fkey" FOREIGN KEY ("horse_power_id") REFERENCES "horse_power"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Category_Config" ADD CONSTRAINT "Category_Config_horse_power_id_fkey" FOREIGN KEY ("horse_power_id") REFERENCES "Horse_Power"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "category_config" ADD CONSTRAINT "category_config_motor_type_id_fkey" FOREIGN KEY ("motor_type_id") REFERENCES "motor_type"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Category_Config" ADD CONSTRAINT "Category_Config_motor_type_id_fkey" FOREIGN KEY ("motor_type_id") REFERENCES "Motor_Type"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "category_config" ADD CONSTRAINT "category_config_kilo_watt_id_fkey" FOREIGN KEY ("kilo_watt_id") REFERENCES "kilo_watt"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Category_Config" ADD CONSTRAINT "Category_Config_kilo_watt_id_fkey" FOREIGN KEY ("kilo_watt_id") REFERENCES "Kilo_Watt"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "category_config" ADD CONSTRAINT "category_config_size_id_fkey" FOREIGN KEY ("size_id") REFERENCES "size"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Category_Config" ADD CONSTRAINT "Category_Config_size_id_fkey" FOREIGN KEY ("size_id") REFERENCES "Size"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "category_config" ADD CONSTRAINT "category_config_gear_box_type_id_fkey" FOREIGN KEY ("gear_box_type_id") REFERENCES "gear_box_type"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Category_Config" ADD CONSTRAINT "Category_Config_gear_box_type_id_fkey" FOREIGN KEY ("gear_box_type_id") REFERENCES "Gear_Box_Type"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "product" ADD CONSTRAINT "product_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "brand"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Product" ADD CONSTRAINT "Product_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "Brand"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "product" ADD CONSTRAINT "product_status_id_fkey" FOREIGN KEY ("status_id") REFERENCES "status"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Product" ADD CONSTRAINT "Product_status_id_fkey" FOREIGN KEY ("status_id") REFERENCES "Status"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "product" ADD CONSTRAINT "product_category_config_id_fkey" FOREIGN KEY ("category_config_id") REFERENCES "category_config"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Product" ADD CONSTRAINT "Product_category_config_id_fkey" FOREIGN KEY ("category_config_id") REFERENCES "Category_Config"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "stock" ADD CONSTRAINT "stock_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Stock" ADD CONSTRAINT "Stock_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "invoice" ADD CONSTRAINT "invoice_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_customer_id_fkey" FOREIGN KEY ("customer_id") REFERENCES "Customer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "invoice" ADD CONSTRAINT "invoice_payment_method_id_fkey" FOREIGN KEY ("payment_method_id") REFERENCES "payment_method"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_payment_method_id_fkey" FOREIGN KEY ("payment_method_id") REFERENCES "Payment_Method"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "invoice_item" ADD CONSTRAINT "invoice_item_stock_id_fkey" FOREIGN KEY ("stock_id") REFERENCES "stock"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Invoice_Item" ADD CONSTRAINT "Invoice_Item_stock_id_fkey" FOREIGN KEY ("stock_id") REFERENCES "Stock"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "invoice_item" ADD CONSTRAINT "invoice_item_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "invoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Invoice_Item" ADD CONSTRAINT "Invoice_Item_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "Invoice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
