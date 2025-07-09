@@ -4,6 +4,7 @@ import customerRouter from "../customer.route.js";
 import {checkAuth} from "../../utils/authMiddleware.js";
 import brandRouter from "../brand.router.js";
 import productRouter from "../product.router.js";
+import phaseRouter from "../phaseRouter.js";
 
 const rootRouter = Router();
 
@@ -13,5 +14,6 @@ rootRouter.use('/product', checkAuth, productRouter);
 
 
 rootRouter.use('/brand', checkAuth, brandRouter);
+rootRouter.use('/phase', checkAuth, phaseRouter);
 
 export default rootRouter;
