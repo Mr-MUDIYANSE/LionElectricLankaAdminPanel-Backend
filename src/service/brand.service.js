@@ -35,7 +35,11 @@ export const createBrand = async (data) => {
     const {name} = data;
 
     if (!name || typeof name !== 'string') {
-        errors.push('Name is required.');
+        errors.push('Name is required and must be a string.');
+    } else {
+        if (name.trim().length > 45) {
+            errors.push('Name is too long.');
+        }
     }
 
     //Check customer exists
@@ -79,7 +83,7 @@ export const updateBrand = async (id, data) => {
     if (data.name !== undefined) {
         if (typeof data.name !== 'string') {
             errors.push('Name required.');
-            return ;
+            return;
         }
     }
 
@@ -95,7 +99,7 @@ export const updateBrand = async (id, data) => {
         where: {
             id: parseInt(id)
         },
-        data: { name: data.name }
+        data: {name: data.name}
     });
 
     return updatedBrand;

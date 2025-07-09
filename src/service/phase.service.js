@@ -35,7 +35,11 @@ export const createPhases = async (data) => {
     const {name} = data;
 
     if (!name || typeof name !== 'string') {
-        errors.push('Name is required.');
+        errors.push('Name is required and must be a string.');
+    } else {
+        if (name.trim().length > 45) {
+            errors.push('Name is too long.');
+        }
     }
 
     //Check customer exists
