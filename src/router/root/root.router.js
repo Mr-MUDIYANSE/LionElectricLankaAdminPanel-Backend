@@ -6,6 +6,7 @@ import phaseRouter from "../phaseRouter.js";
 import brandRouter from "../brand.router.js";
 import productRouter from "../product.router.js";
 import customerRouter from "../customer.route.js";
+import horsePowerRouter from "../horsePower.router.js";
 
 const rootRouter = Router();
 
@@ -15,5 +16,6 @@ rootRouter.use('/product', checkAuth, productRouter);
 rootRouter.use('/brand', checkAuth, brandRouter);
 rootRouter.use('/phase', checkAuth, phaseRouter);
 rootRouter.use('/speed', checkAuth, speedRouter);
+rootRouter.use('/horse-power', checkAuth, horsePowerRouter);
 
 export default rootRouter;
