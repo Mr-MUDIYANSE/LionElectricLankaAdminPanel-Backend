@@ -1,14 +1,15 @@
 import { Router } from "express";
 import {checkAuth} from "../../utils/authMiddleware.js";
 import authRouter from "../auth.router.js";
+import sizeRouter from "../size.router.js";
 import speedRouter from "../speedRouter.js";
 import phaseRouter from "../phaseRouter.js";
 import brandRouter from "../brand.router.js";
 import productRouter from "../product.router.js";
 import customerRouter from "../customer.route.js";
-import horsePowerRouter from "../horsePower.router.js";
-import motorTypeRouter from "../motorType.route.js";
 import kiloWattRouter from "../kiloWatt.router.js";
+import motorTypeRouter from "../motorType.route.js";
+import horsePowerRouter from "../horsePower.router.js";
 
 const rootRouter = Router();
 
@@ -21,5 +22,6 @@ rootRouter.use('/speed', checkAuth, speedRouter);
 rootRouter.use('/horse-power', checkAuth, horsePowerRouter);
 rootRouter.use('/motor-type', checkAuth, motorTypeRouter);
 rootRouter.use('/kilo-watt', checkAuth, kiloWattRouter);
+rootRouter.use('/size', checkAuth, sizeRouter);
 
 export default rootRouter;
