@@ -10,7 +10,8 @@ import customerRouter from "../customer.route.js";
 import kiloWattRouter from "../kiloWatt.router.js";
 import motorTypeRouter from "../motorType.route.js";
 import horsePowerRouter from "../horsePower.router.js";
-import gearBoxTypeRouter from "../gearBoxType.js";
+import gearBoxTypeRouter from "../gearBoxType.router.js";
+import mainCategoryRouter from "../mainCategory.router.js";
 
 const rootRouter = Router();
 
@@ -25,5 +26,6 @@ rootRouter.use('/motor-type', checkAuth, motorTypeRouter);
 rootRouter.use('/kilo-watt', checkAuth, kiloWattRouter);
 rootRouter.use('/size', checkAuth, sizeRouter);
 rootRouter.use('/gear-box-type', checkAuth, gearBoxTypeRouter);
+rootRouter.use('/main-category', checkAuth, mainCategoryRouter);
 
 export default rootRouter;
