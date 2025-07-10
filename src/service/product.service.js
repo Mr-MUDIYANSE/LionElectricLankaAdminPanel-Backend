@@ -63,32 +63,25 @@ export const getProducts = async (id) => {
         throw error;
     }
 
-    const products = await DB.stock.findMany({
+    const products = await DB.product.findMany({
         where: {
-            product: {
-                status_id: 1,
-                category_config: {
-                    main_category_id: Number(id)
-                }
+            category_config: {
+                main_category_id: Number(id)
             }
         },
         include: {
-            product: {
+            status: true,
+            brand: true,
+            category_config: {
                 include: {
-                    status: true,
-                    brand: true,
-                    category_config: {
-                        include: {
-                            main_category: true,
-                            phase: true,
-                            speed: true,
-                            horse_power: true,
-                            motor_type: true,
-                            kilo_watt: true,
-                            size: true,
-                            gear_box_type: true
-                        }
-                    }
+                    main_category: true,
+                    phase: true,
+                    speed: true,
+                    horse_power: true,
+                    motor_type: true,
+                    kilo_watt: true,
+                    size: true,
+                    gear_box_type: true
                 }
             }
         }
@@ -248,16 +241,16 @@ export const createProduct = async (categoryId, data) => {
 
     // Validate other FK IDs
     const numberFields = [
-        { key: 'phase_id', value: phase_id },
-        { key: 'speed_id', value: speed_id },
-        { key: 'horse_power_id', value: horse_power_id },
-        { key: 'motor_type_id', value: motor_type_id },
-        { key: 'kilo_watt_id', value: kilo_watt_id },
-        { key: 'size_id', value: size_id },
-        { key: 'gear_box_type_id', value: gear_box_type_id },
+        {key: 'phase_id', value: phase_id},
+        {key: 'speed_id', value: speed_id},
+        {key: 'horse_power_id', value: horse_power_id},
+        {key: 'motor_type_id', value: motor_type_id},
+        {key: 'kilo_watt_id', value: kilo_watt_id},
+        {key: 'size_id', value: size_id},
+        {key: 'gear_box_type_id', value: gear_box_type_id},
     ];
 
-    numberFields.forEach(({ key, value }) => {
+    numberFields.forEach(({key, value}) => {
         if (value && (typeof value !== 'number' || isNaN(value) || value <= 0)) {
             errors.push(`${key} must be a valid number.`);
         }
@@ -345,8 +338,8 @@ export const updateProducts = async (productId, data) => {
     // If there’s config data to update
     if (Object.keys(categoryConfigData).length > 0) {
         const product = await DB.product.findUnique({
-            where: { id: Number(productId) },
-            select: { category_config_id: true }
+            where: {id: Number(productId)},
+            select: {category_config_id: true}
         });
 
         if (!product) {
@@ -368,7 +361,7 @@ export const updateProducts = async (productId, data) => {
 
     // Step 3: Update the product
     const updatedProduct = await DB.product.update({
-        where: { id: Number(productId) },
+        where: {id: Number(productId)},
         data: productUpdateData,
         include: {
             brand: true,
