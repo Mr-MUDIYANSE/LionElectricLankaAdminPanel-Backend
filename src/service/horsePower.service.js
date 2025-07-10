@@ -31,10 +31,10 @@ export const getHorsePowersById = async (id) => {
 
 export const createHorsePowers = async (data) => {
     const errors = [];
-    const { power } = data;
+    const {power} = data;
 
-    if (!power || typeof power !== 'string') {
-        errors.push('Horsepower is required and must be a string.');
+    if (!power || typeof power !== 'string' || power.trim() === '') {
+        errors.push('Horsepower is required.');
     } else {
         if (power.trim().length > 45) {
             errors.push('Horsepower is too long.');
@@ -82,7 +82,7 @@ export const updateHorsePowers = async (id, data) => {
     if (data.power !== undefined) {
         if (typeof data.power !== 'string') {
             errors.push('Horsepower required.');
-            return ;
+            return;
         }
     }
 
@@ -98,7 +98,7 @@ export const updateHorsePowers = async (id, data) => {
         where: {
             id: parseInt(id)
         },
-        data: { power: data.power }
+        data: {power: data.power}
     });
 
     return updatedHorsePower;

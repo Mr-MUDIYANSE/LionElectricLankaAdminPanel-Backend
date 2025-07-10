@@ -48,7 +48,7 @@ export const createCustomer = async (data) => {
     const {name, email, contact_no, address, status_id} = data;
 
     if (!name || typeof name !== 'string') {
-        errors.push('Name is required and must be a string.');
+        errors.push('Name is required.');
     } else {
         if (name.trim().length > 45) {
             errors.push('Name is too long.');

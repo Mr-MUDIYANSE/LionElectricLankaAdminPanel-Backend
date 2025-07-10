@@ -34,7 +34,7 @@ export const createMotorTypes = async (data) => {
     const { type } = data;
 
     if (!type || typeof type !== 'string' || type.trim() === '') {
-        errors.push('Motor type is required and must be a not empty.');
+        errors.push('Motor type is required.');
     } else {
         if (type.trim().length > 45) {
             errors.push('Motor type is too long.');

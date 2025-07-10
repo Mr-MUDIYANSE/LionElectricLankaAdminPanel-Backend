@@ -208,10 +208,10 @@ export const getFilteredProductsByTitle = async (categoryId, product_title) => {
 };
 
 export const createProduct = async (categoryId, data) => {
-    if (!categoryId || isNaN(categoryId)) {
-        const error = new Error('Invalid Main Category ID');
-        error.errors = ['Main Category ID must be a number'];
-        throw error;
+    const errors = [];
+
+    if (!categoryId || isNaN(categoryId) || Number(categoryId) <= 0) {
+        errors.push('Main Category ID must be a valid number.');
     }
 
     const {
@@ -228,9 +228,51 @@ export const createProduct = async (categoryId, data) => {
         gear_box_type_id,
     } = data;
 
-    // Build category_config insert data dynamically
+    if (!title || typeof title !== 'string' || title.trim() === '') {
+        errors.push('Title is required and must be a non empty.');
+    } else if (title.trim().length > 100) {
+        errors.push('Title is too long (max 100 characters).');
+    }
+
+    if (!description || typeof description !== 'string' || description.trim() === '') {
+        errors.push('Description is required and must be a non empty.');
+    }
+
+    if (typeof warranty !== 'number' || isNaN(warranty) || warranty < 0) {
+        errors.push('Warranty must be a valid non number.');
+    }
+
+    if (!brand_id || typeof brand_id !== 'number' || brand_id <= 0) {
+        errors.push('Brand ID must be a valid number.');
+    }
+
+    // Validate other FK IDs
+    const numberFields = [
+        { key: 'phase_id', value: phase_id },
+        { key: 'speed_id', value: speed_id },
+        { key: 'horse_power_id', value: horse_power_id },
+        { key: 'motor_type_id', value: motor_type_id },
+        { key: 'kilo_watt_id', value: kilo_watt_id },
+        { key: 'size_id', value: size_id },
+        { key: 'gear_box_type_id', value: gear_box_type_id },
+    ];
+
+    numberFields.forEach(({ key, value }) => {
+        if (value && (typeof value !== 'number' || isNaN(value) || value <= 0)) {
+            errors.push(`${key} must be a valid number.`);
+        }
+    });
+
+    // If there are validation errors, throw them
+    if (errors.length > 0) {
+        const error = new Error('Validation error');
+        error.errors = errors;
+        throw error;
+    }
+
+    // Build category_config insert data
     const categoryConfigData = {
-        main_category_id: Number(categoryId)
+        main_category_id: Number(categoryId),
     };
 
     if (phase_id) categoryConfigData.phase_id = phase_id;
@@ -241,20 +283,20 @@ export const createProduct = async (categoryId, data) => {
     if (size_id) categoryConfigData.size_id = size_id;
     if (gear_box_type_id) categoryConfigData.gear_box_type_id = gear_box_type_id;
 
-    // Step 1: Create category config
+    // Create category config
     const categoryConfig = await DB.category_Config.create({
-        data: categoryConfigData
+        data: categoryConfigData,
     });
 
-    // Step 2: Create product
+    // Create product
     const product = await DB.product.create({
         data: {
-            title,
-            description,
+            title: title.trim(),
+            description: description.trim(),
             warranty,
             brand_id,
             status_id: 1,
-            category_config_id: categoryConfig.id
+            category_config_id: categoryConfig.id,
         },
         include: {
             brand: true,
@@ -267,21 +309,11 @@ export const createProduct = async (categoryId, data) => {
                     motor_type: true,
                     kilo_watt: true,
                     size: true,
-                    gear_box_type: true
-                }
-            }
-        }
+                    gear_box_type: true,
+                },
+            },
+        },
     });
-
-    // Step 3: Create stock record
-    // const stock = await DB.stock.create({
-    //     data: {
-    //         product_id: product.id,
-    //         qty,
-    //         unit_buying_price,
-    //         unit_selling_price
-    //     }
-    // });
 
     return removeNullFields(product);
 };

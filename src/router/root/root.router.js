@@ -8,6 +8,7 @@ import productRouter from "../product.router.js";
 import customerRouter from "../customer.route.js";
 import horsePowerRouter from "../horsePower.router.js";
 import motorTypeRouter from "../motorType.route.js";
+import kiloWattRouter from "../kiloWatt.router.js";
 
 const rootRouter = Router();
 
@@ -19,5 +20,6 @@ rootRouter.use('/phase', checkAuth, phaseRouter);
 rootRouter.use('/speed', checkAuth, speedRouter);
 rootRouter.use('/horse-power', checkAuth, horsePowerRouter);
 rootRouter.use('/motor-type', checkAuth, motorTypeRouter);
+rootRouter.use('/kilo-watt', checkAuth, kiloWattRouter);
 
 export default rootRouter;

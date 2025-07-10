@@ -31,10 +31,10 @@ export const getSpeedsById = async (id) => {
 
 export const createSpeeds = async (data) => {
     const errors = [];
-    const { speed } = data;
+    const {speed} = data;
 
-    if (!speed || typeof speed !== 'string') {
-        errors.push('Speed is required and must be a string.');
+    if (!speed || typeof speed !== 'string' || speed.trim() === '') {
+        errors.push('Speed is required.');
     } else {
         if (speed.trim().length > 45) {
             errors.push('Speed is too long.');
@@ -82,7 +82,7 @@ export const updateSpeeds = async (id, data) => {
     if (data.speed !== undefined) {
         if (typeof data.speed !== 'string') {
             errors.push('Speed required.');
-            return ;
+            return;
         }
     }
 
@@ -98,7 +98,7 @@ export const updateSpeeds = async (id, data) => {
         where: {
             id: parseInt(id)
         },
-        data: { speed: data.speed }
+        data: {speed: data.speed}
     });
 
     return updatedSpeed;
