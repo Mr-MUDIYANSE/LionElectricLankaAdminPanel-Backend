@@ -219,6 +219,23 @@ export const createProduct = async (categoryId, data) => {
         gear_box_type_id,
     } = data;
 
+    // Check if product title already exists (case-sensitive)
+    const existingProduct = await DB.product.findFirst({
+        where: {
+            title: title.trim(),
+        },
+    });
+
+    if (existingProduct) {
+        errors.push('This product already exists.');
+    }
+
+    if (errors.length > 0) {
+        const error = new Error('Validation error');
+        error.errors = errors;
+        throw error;
+    }
+
     if (!title || typeof title !== 'string' || title.trim() === '') {
         errors.push('Title is required and must be a non empty.');
     } else if (title.trim().length > 100) {
