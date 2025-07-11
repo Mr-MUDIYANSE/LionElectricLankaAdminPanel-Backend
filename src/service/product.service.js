@@ -229,8 +229,8 @@ export const createProduct = async (categoryId, data) => {
         errors.push('Description is required and must be a non empty.');
     }
 
-    if (typeof warranty !== 'number' || isNaN(warranty) || warranty < 0) {
-        errors.push('Warranty must be a valid non number.');
+    if (typeof warranty !== 'string' || isNaN(warranty) || warranty < 0) {
+        errors.push('Warranty must be a valid.');
     }
 
     if (!brand_id || typeof brand_id !== 'number' || brand_id <= 0) {
