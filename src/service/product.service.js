@@ -229,7 +229,7 @@ export const createProduct = async (categoryId, data) => {
         errors.push('Description is required and must be a non empty.');
     }
 
-    if (typeof warranty !== 'string' || isNaN(warranty) || warranty < 0) {
+    if (typeof warranty !== 'string') {
         errors.push('Warranty must be a valid.');
     }
 
