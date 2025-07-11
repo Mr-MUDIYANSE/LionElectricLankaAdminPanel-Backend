@@ -198,132 +198,73 @@ export const getFilteredProductsByTitle = async (categoryId, product_title) => {
     return removeNullFields(products);
 };
 
-export const createProduct = async (categoryId, data) => {
+export const createStocks = async (productId, data) => {
     const errors = [];
 
-    if (!categoryId || isNaN(categoryId) || Number(categoryId) <= 0) {
-        errors.push('Main Category ID must be a valid number.');
+    if (!productId || isNaN(productId) || Number(productId) <= 0) {
+        errors.push('Product id must be a valid.');
     }
 
-    const {
-        title,
-        description,
-        warranty,
-        brand_id,
-        phase_id,
-        speed_id,
-        horse_power_id,
-        motor_type_id,
-        kilo_watt_id,
-        size_id,
-        gear_box_type_id,
-    } = data;
+    const { unit_buying_price, unit_selling_price, qty } = data;
 
-    // Check if product title already exists (case-sensitive)
-    const existingProduct = await DB.product.findFirst({
+    if (!unit_buying_price || isNaN(unit_buying_price) || unit_buying_price <= 0) {
+        errors.push('Unit buying price must be a valid price.');
+    }
+
+    if (!unit_selling_price || isNaN(unit_selling_price) || unit_selling_price <= 0) {
+        errors.push('Unit selling price must be a valid price.');
+    }
+
+    if (!qty || isNaN(qty) || qty <= 0) {
+        errors.push('Quantity must be a valid.');
+    }
+
+    if (errors.length > 0) {
+        const error = new Error('Validation Error');
+        error.errors = errors;
+        throw error;
+    }
+
+    // Check if product exists
+    const existingProduct = await DB.product.findUnique({
+        where: { id: Number(productId) },
+    });
+
+    if (!existingProduct) {
+        const error = new Error('Product not found.');
+        error.errors = ['Provided product id does not exist.'];
+        throw error;
+    }
+
+    const existingStock = await DB.stock.findFirst({
         where: {
-            title: title.trim(),
+            product_id: Number(productId),
+            unit_buying_price: Number(unit_buying_price),
+            unit_selling_price: Number(unit_selling_price),
         },
     });
 
-    if (existingProduct) {
-        errors.push('This product already exists.');
-    }
-
-    if (errors.length > 0) {
-        const error = new Error('Validation error');
-        error.errors = errors;
-        throw error;
-    }
-
-    if (!title || typeof title !== 'string' || title.trim() === '') {
-        errors.push('Title is required and must be a non empty.');
-    } else if (title.trim().length > 100) {
-        errors.push('Title is too long (max 100 characters).');
-    }
-
-    if (!description || typeof description !== 'string' || description.trim() === '') {
-        errors.push('Description is required and must be a non empty.');
-    }
-
-    if (typeof warranty !== 'string') {
-        errors.push('Warranty must be a valid.');
-    }
-
-    if (!brand_id || typeof brand_id !== 'number' || brand_id <= 0) {
-        errors.push('Brand ID must be a valid number.');
-    }
-
-    // Validate other FK IDs
-    const numberFields = [
-        {key: 'phase_id', value: phase_id},
-        {key: 'speed_id', value: speed_id},
-        {key: 'horse_power_id', value: horse_power_id},
-        {key: 'motor_type_id', value: motor_type_id},
-        {key: 'kilo_watt_id', value: kilo_watt_id},
-        {key: 'size_id', value: size_id},
-        {key: 'gear_box_type_id', value: gear_box_type_id},
-    ];
-
-    numberFields.forEach(({key, value}) => {
-        if (value && (typeof value !== 'number' || isNaN(value) || value <= 0)) {
-            errors.push(`${key} must be a valid number.`);
-        }
-    });
-
-    // If there are validation errors, throw them
-    if (errors.length > 0) {
-        const error = new Error('Validation error');
-        error.errors = errors;
-        throw error;
-    }
-
-    // Build category_config insert data
-    const categoryConfigData = {
-        main_category_id: Number(categoryId),
-    };
-
-    if (phase_id) categoryConfigData.phase_id = phase_id;
-    if (speed_id) categoryConfigData.speed_id = speed_id;
-    if (horse_power_id) categoryConfigData.horse_power_id = horse_power_id;
-    if (motor_type_id) categoryConfigData.motor_type_id = motor_type_id;
-    if (kilo_watt_id) categoryConfigData.kilo_watt_id = kilo_watt_id;
-    if (size_id) categoryConfigData.size_id = size_id;
-    if (gear_box_type_id) categoryConfigData.gear_box_type_id = gear_box_type_id;
-
-    // Create category config
-    const categoryConfig = await DB.category_Config.create({
-        data: categoryConfigData,
-    });
-
-    // Create product
-    const product = await DB.product.create({
-        data: {
-            title: title.trim(),
-            description: description.trim(),
-            warranty,
-            brand_id,
-            status_id: 1,
-            category_config_id: categoryConfig.id,
-        },
-        include: {
-            brand: true,
-            category_config: {
-                include: {
-                    main_category: true,
-                    phase: true,
-                    speed: true,
-                    horse_power: true,
-                    motor_type: true,
-                    kilo_watt: true,
-                    size: true,
-                    gear_box_type: true,
-                },
+    if (existingStock) {
+        const updatedStock = await DB.stock.update({
+            where: { id: existingStock.id },
+            data: {
+                qty: existingStock.qty + Number(qty),
             },
-        },
-    });
+        });
 
-    return removeNullFields(product);
+        return { stock: updatedStock, action: 'updated' };
+    } else {
+        const newStock = await DB.stock.create({
+            data: {
+                product_id: Number(productId),
+                unit_buying_price: Number(unit_buying_price),
+                unit_selling_price: Number(unit_selling_price),
+                qty: Number(qty),
+            },
+        });
+
+        return { stock: newStock, action: 'created' };
+    }
 };
 
 export const updateStocks = async (stockId, data) => {

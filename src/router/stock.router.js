@@ -4,7 +4,7 @@ import {createStock, getAllStock, updateStock} from "../controller/stock.control
 const stockRouter = Router();
 
 stockRouter.get('/all', getAllStock);
-stockRouter.post('/create', createStock);
+stockRouter.post('/create/:id', createStock);
 stockRouter.patch('/update/:id', updateStock);
 // stockRouter.delete('/delete/:id', deleteStock);
 

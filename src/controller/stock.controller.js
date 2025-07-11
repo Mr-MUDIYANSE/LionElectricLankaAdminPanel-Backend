@@ -5,7 +5,7 @@ import {
     getProducts,
     updateProducts
 } from "../service/product.service.js";
-import {getAllStocks, updateStocks} from "../service/stock.service.js";
+import {createStocks, getAllStocks, updateStocks} from "../service/stock.service.js";
 
 export const getAllStock = async (req, res) => {
     try {
@@ -26,33 +26,34 @@ export const getAllStock = async (req, res) => {
 }
 
 export const createStock = async (req, res) => {
-    const categoryId = Number(req.params.id);
+    const productId = Number(req.params.id);
     const data = req.body;
 
-    if (!categoryId || isNaN(categoryId)) {
+    if (!productId || isNaN(productId)) {
         return res.status(400).json({
             success: false,
-            message: 'Invalid or missing ID parameter.',
-            errors: ['Category ID must be a number.'],
+            message: 'Invalid or missing id parameter.',
+            errors: ['Product id must be a number.'],
             data: null
         });
     }
 
-    if (!data){
+    if (!data) {
         return res.status(400).json({
             success: false,
-            message: 'Please enter product data.',
-            errors: ['product data required.'],
+            message: 'Please enter stock data.',
+            errors: ['Stock data required.'],
             data: null
         });
     }
 
     try {
-        const newProduct = await createProduct(categoryId, data);
+        const { stock, action } = await createStocks(productId, data);
+
         return res.status(200).json({
             success: true,
-            message: 'Product created successfully.',
-            data: newProduct
+            message: action === 'updated' ? 'Quantity updated for existing stock.' : 'New stock created.',
+            data: stock
         });
     } catch (err) {
         res.status(500).json({
