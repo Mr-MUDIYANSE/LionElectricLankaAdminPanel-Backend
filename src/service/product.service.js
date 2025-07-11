@@ -327,8 +327,6 @@ export const createProduct = async (categoryId, data) => {
 };
 
 export const updateProducts = async (categoryId, productId, data) => {
-    console.log("c: ", categoryId);
-    console.log("p: ", productId);
 
     if (!categoryId || isNaN(categoryId)) {
         const error = new Error('Invalid Category ID');
