@@ -326,9 +326,18 @@ export const createProduct = async (categoryId, data) => {
     return removeNullFields(product);
 };
 
-export const updateProducts = async (productId, data) => {
+export const updateProducts = async (categoryId, productId, data) => {
+    console.log("c: ", categoryId);
+    console.log("p: ", productId);
+
+    if (!categoryId || isNaN(categoryId)) {
+        const error = new Error('Invalid Category ID');
+        error.errors = ['Category ID must be a number'];
+        throw error;
+    }
+
     if (!productId || isNaN(productId)) {
-        const error = new Error('Invalid product ID');
+        const error = new Error('Invalid Product ID');
         error.errors = ['Product ID must be a number'];
         throw error;
     }
@@ -353,8 +362,8 @@ export const updateProducts = async (productId, data) => {
     // If there’s config data to update
     if (Object.keys(categoryConfigData).length > 0) {
         const product = await DB.product.findUnique({
-            where: {id: Number(productId)},
-            select: {category_config_id: true}
+            where: { id: Number(productId) },
+            select: { category_config_id: true }
         });
 
         if (!product) {
@@ -363,20 +372,20 @@ export const updateProducts = async (productId, data) => {
             throw error;
         }
 
-        // Update existing config or create new one
-        const newConfig = await DB.category_Config.create({
+        await DB.category_Config.update({
+            where: {
+                id: product.category_config_id
+            },
             data: {
-                main_category_id: data.main_category_id || 1, // fallback if missing
+                main_category_id: Number(categoryId),
                 ...categoryConfigData
             }
         });
-
-        productUpdateData.category_config_id = newConfig.id;
     }
 
     // Step 3: Update the product
     const updatedProduct = await DB.product.update({
-        where: {id: Number(productId)},
+        where: { id: Number(productId) },
         data: productUpdateData,
         include: {
             brand: true,
@@ -394,5 +403,6 @@ export const updateProducts = async (productId, data) => {
             }
         }
     });
+
     return removeNullFields(updatedProduct);
 };

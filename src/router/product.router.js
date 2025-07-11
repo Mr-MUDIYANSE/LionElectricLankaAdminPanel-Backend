@@ -13,6 +13,6 @@ productRouter.get('/category/:id', getProductsByCategoryId);
 productRouter.get('/category/:id/filter', filterProducts);
 productRouter.get('/category/:id/filter/title', filterProductsByTitle);
 productRouter.post('/create/category/:id', createNewProduct);
-productRouter.patch('/update/:id', updateProduct);
+productRouter.patch('/:productId/category/:categoryId/update', updateProduct);
 
 export default productRouter;

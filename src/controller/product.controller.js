@@ -97,7 +97,7 @@ export const filterProductsByTitle = async (req, res) => {
         });
     }
 
-    if (product_title ===''){
+    if (product_title === '') {
         return res.status(400).json({
             success: false,
             message: 'Please enter product title.',
@@ -136,7 +136,7 @@ export const createNewProduct = async (req, res) => {
         });
     }
 
-    if (!data){
+    if (!data) {
         return res.status(400).json({
             success: false,
             message: 'Please enter product data.',
@@ -163,19 +163,28 @@ export const createNewProduct = async (req, res) => {
 };
 
 export const updateProduct = async (req, res) => {
-    const productId = Number(req.params.id);
+    const { categoryId, productId } = req.params;
     const data = req.body;
+
+    if (!categoryId || isNaN(categoryId)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid or missing id parameter.',
+            errors: ['Category id must be a number.'],
+            data: null
+        });
+    }
 
     if (!productId || isNaN(productId)) {
         return res.status(400).json({
             success: false,
             message: 'Invalid or missing ID parameter.',
-            errors: ['Product ID must be a number.'],
+            errors: ['Product id must be a number.'],
             data: null
         });
     }
 
-    if (!data){
+    if (!data) {
         return res.status(400).json({
             success: false,
             message: 'At least one data is required to update.',
@@ -185,7 +194,7 @@ export const updateProduct = async (req, res) => {
     }
 
     try {
-        const updatedProduct = await updateProducts(productId, data);
+        const updatedProduct = await updateProducts(categoryId, productId, data);
         return res.status(200).json({
             success: true,
             message: 'Product updated successfully.',
