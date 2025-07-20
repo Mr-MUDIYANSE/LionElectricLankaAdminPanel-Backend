@@ -188,6 +188,7 @@ export const updateStocks = async (stockId, data) => {
     const stockUpdateData = {};
     if (data.unit_buying_price) stockUpdateData.unit_buying_price = data.unit_buying_price;
     if (data.unit_selling_price) stockUpdateData.unit_selling_price = data.unit_selling_price;
+    if (data.qty) stockUpdateData.qty = data.qty;
 
     // If there’s config data to update
     if (Object.keys(stockUpdateData).length > 0) {

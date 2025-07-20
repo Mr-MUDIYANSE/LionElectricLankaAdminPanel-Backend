@@ -26,9 +26,19 @@ export const getAllStock = async (req, res) => {
 }
 
 export const getFilterStock = async (req, res) => {
-    try {
-        const categoryId = req.params.id;
 
+    const categoryId = req.params.id;
+
+    if (!categoryId || isNaN(categoryId)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid or missing id parameter.',
+            errors: ['Category id id must be a number.'],
+            data: null
+        });
+    }
+
+    try {
         const products = await getFilteredStock(categoryId);
 
         res.status(200).json({
