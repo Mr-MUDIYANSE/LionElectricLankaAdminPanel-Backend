@@ -5,7 +5,7 @@ import {
     getProducts,
     updateProducts
 } from "../service/product.service.js";
-import {createStocks, getAllStocks, updateStocks} from "../service/stock.service.js";
+import {createStocks, getAllStocks, getFilteredStock, updateStocks} from "../service/stock.service.js";
 
 export const getAllStock = async (req, res) => {
     try {
@@ -24,6 +24,28 @@ export const getAllStock = async (req, res) => {
         });
     }
 }
+
+export const getFilterStock = async (req, res) => {
+    try {
+        const categoryId = req.params.id;
+
+        const products = await getFilteredStock(categoryId);
+
+        res.status(200).json({
+            success: true,
+            message: 'Filtered stock retrieved',
+            data: products
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: err.message,
+            errors: err.errors || [],
+            data: null
+        });
+    }
+};
+
 
 export const createStock = async (req, res) => {
     const productId = Number(req.params.id);

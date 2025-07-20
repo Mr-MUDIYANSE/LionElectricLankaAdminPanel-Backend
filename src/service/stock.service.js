@@ -59,104 +59,51 @@ export const getAllStocks = async () => {
     return removeNullFields(stocks);
 };
 
-export const getFilteredProducts = async (categoryId, filters) => {
+export const getFilteredStock = async (categoryId) => {
     if (!categoryId || isNaN(categoryId)) {
         const error = new Error('Invalid Category ID');
         error.errors = ['Category ID must be a valid number.'];
         throw error;
     }
 
-    // Build filter for category_config
-    const categoryConfigFilter = {
-        main_category_id: Number(categoryId),
-    };
-
-    const allowedFilterKeys = [
-        'phase_id',
-        'speed_id',
-        'horse_power_id',
-        'motor_type_id',
-        'kilo_watt_id',
-        'size_id',
-        'gear_box_type_id',
-    ];
-
-    for (const key of allowedFilterKeys) {
-        if (filters[key]) {
-            const value = Number(filters[key]);
-            if (!isNaN(value)) {
-                categoryConfigFilter[key] = value;
-            }
-        }
-    }
-
-    // Query products with joined category_config filter
-    const products = await DB.product.findMany({
+    const stocks = await DB.stock.findMany({
         where: {
-            category_config: {
-                ...categoryConfigFilter
+            status_id: 1,
+            product: {
+                category_config: {
+                    main_category_id: Number(categoryId),
+                },
             },
         },
         include: {
-            status: true,
-            brand: true,
-            category_config: {
+            product: {
                 include: {
-                    main_category: true,
-                    phase: true,
-                    speed: true,
-                    horse_power: true,
-                    motor_type: true,
-                    kilo_watt: true,
-                    size: true,
-                    gear_box_type: true,
+                    status: true,
+                    brand: true,
+                    category_config: {
+                        include: {
+                            main_category: true,
+                            phase: true,
+                            speed: true,
+                            horse_power: true,
+                            motor_type: true,
+                            kilo_watt: true,
+                            size: true,
+                            gear_box_type: true,
+                        },
+                    },
                 },
             },
         },
     });
 
-    if (!products || products.length === 0) {
-        const error = new Error('No products');
-        error.errors = ['No matching products found'];
+    if (!stocks || stocks.length === 0) {
+        const error = new Error("No stocks");
+        error.errors = ["No stocks found"];
         throw error;
     }
 
-    return removeNullFields(products);
-};
-
-export const getFilteredProductsByTitle = async (categoryId, product_title) => {
-    const products = await DB.product.findMany({
-        where: {
-            title: {
-                contains: product_title,
-                mode: 'insensitive'  // case-insensitive search
-            },
-        },
-        include: {
-            brand: true,
-            category_config: {
-                include: {
-                    main_category: true,
-                    phase: true,
-                    speed: true,
-                    horse_power: true,
-                    motor_type: true,
-                    kilo_watt: true,
-                    size: true,
-                    gear_box_type: true
-                }
-            }
-        }
-    });
-
-    if (!products || products.length === 0) {
-        const error = new Error('No products');
-        error.errors = ['No matching products found'];
-        throw error;
-    }
-
-    // Remove null fields recursively
-    return removeNullFields(products);
+    return removeNullFields(stocks);
 };
 
 export const createStocks = async (productId, data) => {
