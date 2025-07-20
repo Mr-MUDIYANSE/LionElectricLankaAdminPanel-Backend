@@ -25,6 +25,9 @@ const removeNullFields = (obj) => {
 
 export const getAllStocks = async () => {
     const stocks = await DB.stock.findMany({
+        where: {
+            status_id: 1,
+        },
         include: {
             product: {
                 include: {
@@ -54,48 +57,6 @@ export const getAllStocks = async () => {
     }
 
     return removeNullFields(stocks);
-};
-
-export const getProducts = async (id) => {
-    if (!id || isNaN(id)) {
-        const error = new Error('Invalid ID');
-        error.errors = ['Category ID must be a number'];
-        throw error;
-    }
-
-    const products = await DB.product.findMany({
-        where: {
-            category_config: {
-                main_category_id: Number(id)
-            }
-        },
-        include: {
-            status: true,
-            brand: true,
-            category_config: {
-                include: {
-                    main_category: true,
-                    phase: true,
-                    speed: true,
-                    horse_power: true,
-                    motor_type: true,
-                    kilo_watt: true,
-                    size: true,
-                    gear_box_type: true
-                }
-            }
-        }
-    });
-
-    if (!products || products.length === 0) {
-        const error = new Error('No products found for this category');
-        error.errors = ['No products found for the given main category ID'];
-        throw error;
-    }
-
-    // Remove null fields recursively
-    return removeNullFields(products);
-
 };
 
 export const getFilteredProducts = async (categoryId, filters) => {
@@ -260,6 +221,7 @@ export const createStocks = async (productId, data) => {
                 unit_buying_price: Number(unit_buying_price),
                 unit_selling_price: Number(unit_selling_price),
                 qty: Number(qty),
+                status_id:1
             },
         });
 
