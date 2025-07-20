@@ -157,6 +157,7 @@ export const createStocks = async (productId, data) => {
             where: { id: existingStock.id },
             data: {
                 qty: existingStock.qty + Number(qty),
+                status_id:1
             },
         });
 
