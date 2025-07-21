@@ -44,7 +44,7 @@ export const resetPassword = async (req, res) => {
         });
     }
 
-    const admin = await prisma.admin.findFirst({
+    const admin = await DB.admin.findFirst({
         where: {
             reset_token: token,
             reset_token_expiry: {
@@ -73,8 +73,8 @@ export const resetPassword = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await prisma.admin.update({
-        where: { email: admin.email },
+    await DB.admin.update({
+        where: { id: admin.id },
         data: {
             password: hashedPassword,
             reset_token: null,
