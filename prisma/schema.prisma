@@ -191,20 +191,27 @@ model Payment_Method {
   invoices   Invoice[]
 }
 
+model Payment_Status {
+  id         Int       @id @default(autoincrement())
+  status     String    @db.VarChar(10)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  invoice    Invoice[]
+}
+
 model Invoice {
-  id                String   @id
-  total_amount      Float?
-  discount          Float?
-  sub_total         Float?
+  id                String         @id @default(uuid())
   paid_amount       Float?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
   customer_id       Int
   payment_method_id Int
+  payment_status_id Int
+  invoice_items     Invoice_Item[]
 
-  customer       Customer       @relation(fields: [customer_id], references: [id])
-  payment_method Payment_Method @relation(fields: [payment_method_id], references: [id])
-  invoice_items  Invoice_Item[]
+  payment_method Payment_Method  @relation(fields: [payment_method_id], references: [id])
+  customer       Customer        @relation(fields: [customer_id], references: [id])
+  payment_status Payment_Status? @relation(fields: [payment_status_id], references: [id])
 }
 
 model Invoice_Item {

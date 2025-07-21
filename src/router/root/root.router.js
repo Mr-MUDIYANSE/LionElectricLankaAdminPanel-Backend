@@ -13,6 +13,8 @@ import horsePowerRouter from "../horsePower.router.js";
 import gearBoxTypeRouter from "../gearBoxType.router.js";
 import mainCategoryRouter from "../mainCategory.router.js";
 import stockRouter from "../stock.router.js";
+import invoiceRouter from "../invoice.router.js";
+import paymentStatusRouter from "../paymentStatus.router.js";
 
 const rootRouter = Router();
 
@@ -28,6 +30,8 @@ rootRouter.use('/kilo-watt', checkAuth, kiloWattRouter);
 rootRouter.use('/size', checkAuth, sizeRouter);
 rootRouter.use('/gear-box-type', checkAuth, gearBoxTypeRouter);
 rootRouter.use('/main-category', checkAuth, mainCategoryRouter);
+rootRouter.use('/payment-status', checkAuth, paymentStatusRouter);
 rootRouter.use('/stock', checkAuth, stockRouter);
+rootRouter.use('/invoice', checkAuth, invoiceRouter);
 
 export default rootRouter;
