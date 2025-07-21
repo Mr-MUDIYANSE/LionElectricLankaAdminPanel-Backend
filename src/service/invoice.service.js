@@ -1,5 +1,128 @@
 import DB from "../db/db.js";
-import { startOfMonth, endOfMonth } from 'date-fns';
+import {startOfMonth, endOfMonth} from 'date-fns';
+
+export const getAllInvoices = async (date) => {
+    let whereClause = {};
+
+    if (date) {
+        // If only year-month provided (e.g., '2025-07')
+        if (/^\d{4}-\d{2}$/.test(date)) {
+            const start = new Date(`${date}-01T00:00:00`);
+            const end = endOfMonth(start);
+            whereClause.created_at = {
+                gte: start,
+                lte: end
+            };
+        }
+        // If full date provided (e.g., '2025-07-21')
+        else if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            const dayStart = new Date(`${date}T00:00:00`);
+            const dayEnd = new Date(`${date}T23:59:59`);
+            whereClause.created_at = {
+                gte: dayStart,
+                lte: dayEnd
+            };
+        }
+    } else {
+        // Default: current month
+        const now = new Date();
+        const start = startOfMonth(now);
+        const end = endOfMonth(now);
+        whereClause.created_at = {
+            gte: start,
+            lte: end
+        };
+    }
+
+    const invoices = await DB.invoice.findMany({
+        orderBy: {created_at: "desc"},
+        where: whereClause,
+        include: {
+            customer: true,
+            payment_method: true,
+            payment_status: true,
+            invoice_items: {
+                include: {
+                    stock: {
+                        include: {
+                            status: true,
+                            product: {
+                                include: {
+                                    brand: true,
+                                    status: true,
+                                    category_config: {
+                                        include: {
+                                            main_category: true,
+                                            phase: true,
+                                            speed: true,
+                                            motor_type: true,
+                                            kilo_watt: true,
+                                            horse_power: true,
+                                            size: true,
+                                            gear_box_type: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    return invoices;
+};
+
+export const getInvoiceById = async (invoiceId) => {
+    if (!invoiceId) {
+        throw new Error("Invalid id required");
+    }
+
+    const invoice = await DB.invoice.findUnique({
+        where: {id: invoiceId},
+        include: {
+            customer: true,
+            payment_method: true,
+            payment_status: true,
+            invoice_items: {
+                include: {
+                    stock: {
+                        include: {
+                            status: true,
+                            product: {
+                                include: {
+                                    brand: true,
+                                    status: true,
+                                    category_config: {
+                                        include: {
+                                            main_category: true,
+                                            phase: true,
+                                            speed: true,
+                                            motor_type: true,
+                                            kilo_watt: true,
+                                            horse_power: true,
+                                            size: true,
+                                            gear_box_type: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!invoice) {
+        const error = new Error("Invoice not found");
+        error.status = 404;
+        throw error;
+    }
+
+    return invoice;
+};
 
 export const createInvoices = async (customerId, data) => {
     const {paid_amount, payment_method_id, items} = data;
@@ -51,14 +174,25 @@ export const createInvoices = async (customerId, data) => {
         }
     }
 
-    let resolved_payment_status_id;
+    // Calculate total value of invoice
+    let totalInvoiceValue = 0;
+    for (const item of items) {
+        totalInvoiceValue += item.qty * item.selling_price;
+    }
 
-    if (Number(payment_method_id) === 1) {
+    // Validate paid_amount
+    if (Number(paid_amount) > totalInvoiceValue) {
+        const error = new Error("Paid amount cannot exceed total invoice value.");
+        error.errors = [`Paid amount (${paid_amount}) exceeds total value (${totalInvoiceValue}).`];
+        throw error;
+    }
+
+    // Set payment_status_id based on paid_amount vs total
+    let resolved_payment_status_id;
+    if (Number(paid_amount) === totalInvoiceValue) {
         resolved_payment_status_id = 1;
-    } else if (Number(payment_method_id) === 2) {
-        resolved_payment_status_id = 2;
     } else {
-        throw new Error("Invalid payment method ID.");
+        resolved_payment_status_id = 2;
     }
 
     // Create Invoice with Items
@@ -110,125 +244,74 @@ export const createInvoices = async (customerId, data) => {
     return invoice;
 };
 
-export const getAllInvoices = async (date) => {
-    let whereClause = {};
+export const updatedInvoices = async (invoiceId, data) => {
+    const {paid_amount} = data;
 
-    if (date) {
-        // If only year-month provided (e.g., '2025-07')
-        if (/^\d{4}-\d{2}$/.test(date)) {
-            const start = new Date(`${date}-01T00:00:00`);
-            const end = endOfMonth(start);
-            whereClause.created_at = {
-                gte: start,
-                lte: end
-            };
-        }
-        // If full date provided (e.g., '2025-07-21')
-        else if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-            const dayStart = new Date(`${date}T00:00:00`);
-            const dayEnd = new Date(`${date}T23:59:59`);
-            whereClause.created_at = {
-                gte: dayStart,
-                lte: dayEnd
-            };
-        }
-    } else {
-        // Default: current month
-        const now = new Date();
-        const start = startOfMonth(now);
-        const end = endOfMonth(now);
-        whereClause.created_at = {
-            gte: start,
-            lte: end
-        };
+    const errors = [];
+    if (!invoiceId) errors.push("Invoice ID is required.");
+    if (paid_amount == null || isNaN(paid_amount)) errors.push("Valid paid amount is required.");
+
+    if (errors.length > 0) {
+        const error = new Error("Validation failed");
+        error.errors = errors;
+        throw error;
     }
 
-    const invoices = await DB.invoice.findMany({
-        orderBy: { created_at: "desc" },
-        where: whereClause,
-        include: {
-            customer: true,
-            payment_method: true,
-            payment_status: true,
-            invoice_items: {
-                include: {
-                    stock: {
-                        include: {
-                            status: true,
-                            product: {
-                                include: {
-                                    brand: true,
-                                    status: true,
-                                    category_config: {
-                                        include: {
-                                            main_category: true,
-                                            phase: true,
-                                            speed: true,
-                                            motor_type: true,
-                                            kilo_watt: true,
-                                            horse_power: true,
-                                            size: true,
-                                            gear_box_type: true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    return invoices;
-};
-
-export const getInvoiceById = async (invoiceId) => {
-    if (!invoiceId) {
-        throw new Error("Invalid id required");
-    }
-
+    // Fetch the invoice
     const invoice = await DB.invoice.findUnique({
-        where: { id: invoiceId },
+        where: {id: invoiceId},
         include: {
-            customer: true,
-            payment_method: true,
-            payment_status: true,
-            invoice_items: {
-                include: {
-                    stock: {
-                        include: {
-                            status: true,
-                            product: {
-                                include: {
-                                    brand: true,
-                                    status: true,
-                                    category_config: {
-                                        include: {
-                                            main_category: true,
-                                            phase: true,
-                                            speed: true,
-                                            motor_type: true,
-                                            kilo_watt: true,
-                                            horse_power: true,
-                                            size: true,
-                                            gear_box_type: true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+            invoice_items: true,
+            payment_status: true
+        },
     });
 
     if (!invoice) {
-        const error = new Error("Invoice not found");
+        const error = new Error(`Invoice ID ${invoiceId} not found`);
         error.status = 404;
         throw error;
     }
 
-    return invoice;
+    // Calculate total amount
+    const totalAmount = invoice.invoice_items.reduce((sum, item) => {
+        return sum + item.selling_price * item.qty;
+    }, 0);
+
+    // Calculate new paid amount
+    const updatedPaidAmount = Number(invoice.paid_amount || 0) + Number(paid_amount);
+
+    if (updatedPaidAmount > totalAmount) {
+        const error = new Error("Paid amount cannot be greater than total invoice amount.");
+        error.status = 400;
+        error.errors = [`Total paid amount (${updatedPaidAmount}) exceeds total invoice amount (${totalAmount})`];
+        throw error;
+    }
+
+    // Set payment status: 1 = Paid, 2 = Advanced
+    const payment_status_id = updatedPaidAmount === totalAmount ? 1 : 2;
+
+    // Update the invoice
+    const updatedInvoice = await DB.invoice.update({
+        where: {id: invoiceId},
+        data: {
+            paid_amount: updatedPaidAmount,
+            payment_status: {
+                connect: {id: payment_status_id}
+            },
+        },
+        include: {
+            customer: true,
+            invoice_items: {
+                include: {
+                    stock: {
+                        include: {
+                            product: true
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    return updatedInvoice;
 };

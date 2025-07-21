@@ -1,4 +1,9 @@
-import {createInvoices, getAllInvoices, getInvoiceById} from "../service/invoice.service.js";
+import {
+    createInvoices,
+    getAllInvoices,
+    getInvoiceById,
+    updatedInvoices
+} from "../service/invoice.service.js";
 
 export const getAllInvoice = async (req, res) => {
     const date = req.query.date;
@@ -76,3 +81,42 @@ export const createInvoice = async (req, res) => {
         });
     }
 };
+
+export const updateInvoice = async (req, res) => {
+    const invoiceId = req.params.id;
+    const data = req.body;
+
+    if (!invoiceId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid or missing id parameter.',
+            errors: ['Invoice id must be a number.'],
+            data: null
+        });
+    }
+
+    if (!data) {
+        return res.status(400).json({
+            success: false,
+            message: 'Please enter invoice data.',
+            errors: ['Invoice data required.'],
+            data: null
+        });
+    }
+
+    try {
+        const response = await updatedInvoices(invoiceId, data);
+        return res.status(200).json({
+            success: true,
+            message: 'Invoice updated successfully.',
+            data: response
+        });
+    }catch (err) {
+        res.status(500).json({
+            success: false,
+            message: err.message,
+            errors: err.errors || [],
+            data: null
+        });
+    }
+}
