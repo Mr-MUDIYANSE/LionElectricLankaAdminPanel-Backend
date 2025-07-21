@@ -31,9 +31,18 @@ export const forgotPassword = async (req, res) => {
     res.json({ success: true, message: 'Password recovery email sent successfully. Please check your inbox' });
 };
 
-
 export const resetPassword = async (req, res) => {
-    const { token, password } = req.body;
+    const token = req.params.token;
+    const { password } = req.body;
+
+    if (!password) {
+        return res.status(400).json({
+            success: false,
+            message: 'Password must be required.',
+            errors: ['Password required.'],
+            data: null
+        });
+    }
 
     const admin = await prisma.admin.findFirst({
         where: {
@@ -46,6 +55,20 @@ export const resetPassword = async (req, res) => {
 
     if (!admin) {
         return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/;
+
+    if (!passwordRegex.test(password)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid password format.',
+            errors: [
+                'Password must be at least 8 characters long.',
+                'Include at least one uppercase letter, one lowercase letter, one number, and one special character.'
+            ],
+            data: null
+        });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);

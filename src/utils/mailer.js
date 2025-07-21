@@ -14,7 +14,7 @@ export const sendResetEmail = async (to, token) => {
     const mailOptions = {
         from: `"Lion Lanka Electric" <${process.env.EMAIL}>`,
         to,
-        subject: '🔐 Reset Your Password - Lion Lanka Electric',
+        subject: '🔐 Reset Your Password - Lion Electric Lanka',
         html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; padding: 30px; border-radius: 10px; background-color: #f9f9f9;">
         <div style="text-align: center; margin-bottom: 30px;">
