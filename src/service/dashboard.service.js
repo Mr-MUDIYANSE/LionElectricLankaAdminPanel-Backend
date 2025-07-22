@@ -44,7 +44,6 @@ export const getDashboardDataByRange = async (range) => {
 
     const totalOrders = invoices.length;
     const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
-    const activeCustomers = new Set(invoices.map(inv => inv.customer_id)).size;
     const avgOrderValue = totalOrders ? parseFloat((totalRevenue / totalOrders).toFixed(2)) : 0;
 
     // Sales by Category
@@ -114,16 +113,25 @@ export const getDashboardDataByRange = async (range) => {
         salesTrend[month] += inv.paid_amount || 0;
     });
 
+    const allCustomers = await DB.customer.findMany({
+        where: {
+            status_id: 1
+        },
+        orderBy: {
+            id: 'asc'
+        }
+    });
+
     return {
         totalRevenue,
         totalProfit,
         totalOrders,
-        activeCustomers,
         avgOrderValue,
         categorySales,
+        salesTrend,
         topProducts,
         topCustomers,
-        salesTrend
+        allCustomers
     };
 
 };
