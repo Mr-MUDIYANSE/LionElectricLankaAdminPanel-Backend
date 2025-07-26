@@ -142,7 +142,7 @@ export const createInvoices = async (customerId, data) => {
     }
 
     if (!Array.isArray(items) || items.length === 0) errors.push("At least one invoice item required.");
-    if (!paid_amount) errors.push("Paid amount is required.");
+    if (paid_amount < 0) errors.push("Paid amount is required.");
     if (!payment_method_id) errors.push("Payment method ID is required.");
 
     if (errors.length > 0) {
