@@ -7,7 +7,4 @@ services:
       - NODE_ENV=production
       - DATABASE_URL="postgresql://neondb_owner:npg_uB7eFwrTfVx4@ep-broad-glitter-a181m5ob-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
       - PORT="4000"
-      - JWT_SECRET="Qxv83#1F@jU!zWp7Ldk92&vM"
-      - EMAIL="kanishkarosairo98@gmail.com"
-      - PASS="bxzb utrm empv ufqj"
     command: sh -c "npx prisma migrate dev --name init && npm start"
