@@ -31,7 +31,7 @@ model Admin {
 
 model Customer {
   id         Int       @id @default(autoincrement())
-  name       String    @db.VarChar(20)
+  name       String    @db.Text
   email      String?   @db.VarChar(100)
   contact_no String    @unique @db.VarChar(20)
   address    String    @db.Text
@@ -88,25 +88,9 @@ model Speed {
   configs    Category_Config[]
 }
 
-model Horse_Power {
-  id         Int               @id @default(autoincrement())
-  power      String            @db.VarChar(45)
-  created_at DateTime          @default(now())
-  updated_at DateTime          @updatedAt
-  configs    Category_Config[]
-}
-
 model Motor_Type {
   id         Int               @id @default(autoincrement())
   type       String            @db.VarChar(45)
-  created_at DateTime          @default(now())
-  updated_at DateTime          @updatedAt
-  configs    Category_Config[]
-}
-
-model Kilo_Watt {
-  id         Int               @id @default(autoincrement())
-  watt       String            @db.VarChar(45)
   created_at DateTime          @default(now())
   updated_at DateTime          @updatedAt
   configs    Category_Config[]
@@ -144,9 +128,7 @@ model Category_Config {
   main_category Main_Category  @relation(fields: [main_category_id], references: [id])
   phase         Phase?         @relation(fields: [phase_id], references: [id])
   speed         Speed?         @relation(fields: [speed_id], references: [id])
-  horse_power   Horse_Power?   @relation(fields: [horse_power_id], references: [id])
   motor_type    Motor_Type?    @relation(fields: [motor_type_id], references: [id])
-  kilo_watt     Kilo_Watt?     @relation(fields: [kilo_watt_id], references: [id])
   size          Size?          @relation(fields: [size_id], references: [id])
   gear_box_type Gear_Box_Type? @relation(fields: [gear_box_type_id], references: [id])
   products      Product[]
@@ -209,6 +191,7 @@ model Invoice {
   customer_id       Int
   payment_method_id Int
   payment_status_id Int
+  cheque_date       String?        @db.VarChar(20) // This is optional and only needed for cheque payments
   invoice_items     Invoice_Item[]
 
   payment_method Payment_Method  @relation(fields: [payment_method_id], references: [id])

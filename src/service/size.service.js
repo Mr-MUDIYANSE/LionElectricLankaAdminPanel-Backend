@@ -42,7 +42,7 @@ export const createSizes = async (data) => {
         }
     }
 
-    //Check customer exists
+    //Check size exists
     const existSize = await DB.size.findFirst({
         where: {
             size: size,

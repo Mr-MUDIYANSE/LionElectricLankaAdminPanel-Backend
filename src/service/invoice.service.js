@@ -145,6 +145,10 @@ export const createInvoices = async (customerId, data) => {
     if (paid_amount < 0) errors.push("Paid amount is required.");
     if (!payment_method_id) errors.push("Payment method ID is required.");
 
+    if (payment_method_id === 4 || payment_method_id === 5 && !cheque_date) {  // Assuming '2' is the cheque payment method
+        errors.push("Cheque date is required for cheque payments.");
+    }
+
     if (errors.length > 0) {
         const error = new Error("Validation failed");
         error.errors = errors;
@@ -190,9 +194,9 @@ export const createInvoices = async (customerId, data) => {
     // Set payment_status_id based on paid_amount vs total
     let resolved_payment_status_id;
     if (Number(paid_amount) === totalInvoiceValue) {
-        resolved_payment_status_id = 1;
+        resolved_payment_status_id = 1; // Paid
     } else {
-        resolved_payment_status_id = 2;
+        resolved_payment_status_id = 2; // Partially Paid
     }
 
     // Create Invoice with Items
@@ -202,6 +206,7 @@ export const createInvoices = async (customerId, data) => {
             customer_id: Number(customerId),
             payment_method_id: Number(payment_method_id),
             payment_status_id: Number(resolved_payment_status_id),
+            cheque_date: payment_method_id === 2 ? cheque_date : null, // Only for cheque payment
             invoice_items: {
                 create: items.map(item => ({
                     qty: item.qty,

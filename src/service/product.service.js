@@ -36,9 +36,7 @@ export const getAllProduct = async () => {
                     main_category: true,
                     phase: true,
                     speed: true,
-                    horse_power: true,
                     motor_type: true,
-                    kilo_watt: true,
                     size: true,
                     gear_box_type: true
                 }
@@ -77,9 +75,7 @@ export const getProducts = async (id) => {
                     main_category: true,
                     phase: true,
                     speed: true,
-                    horse_power: true,
                     motor_type: true,
-                    kilo_watt: true,
                     size: true,
                     gear_box_type: true
                 }
@@ -113,9 +109,7 @@ export const getFilteredProducts = async (categoryId, filters) => {
     const allowedFilterKeys = [
         'phase_id',
         'speed_id',
-        'horse_power_id',
         'motor_type_id',
-        'kilo_watt_id',
         'size_id',
         'gear_box_type_id',
     ];
@@ -144,9 +138,7 @@ export const getFilteredProducts = async (categoryId, filters) => {
                     main_category: true,
                     phase: true,
                     speed: true,
-                    horse_power: true,
                     motor_type: true,
-                    kilo_watt: true,
                     size: true,
                     gear_box_type: true,
                 },
@@ -178,9 +170,7 @@ export const getFilteredProductsByTitle = async (categoryId, product_title) => {
                     main_category: true,
                     phase: true,
                     speed: true,
-                    horse_power: true,
                     motor_type: true,
-                    kilo_watt: true,
                     size: true,
                     gear_box_type: true
                 }
@@ -212,9 +202,7 @@ export const createProduct = async (categoryId, data) => {
         brand_id,
         phase_id,
         speed_id,
-        horse_power_id,
         motor_type_id,
-        kilo_watt_id,
         size_id,
         gear_box_type_id,
     } = data;
@@ -258,9 +246,7 @@ export const createProduct = async (categoryId, data) => {
     const numberFields = [
         {key: 'phase_id', value: phase_id},
         {key: 'speed_id', value: speed_id},
-        {key: 'horse_power_id', value: horse_power_id},
         {key: 'motor_type_id', value: motor_type_id},
-        {key: 'kilo_watt_id', value: kilo_watt_id},
         {key: 'size_id', value: size_id},
         {key: 'gear_box_type_id', value: gear_box_type_id},
     ];
@@ -285,9 +271,7 @@ export const createProduct = async (categoryId, data) => {
 
     if (phase_id) categoryConfigData.phase_id = phase_id;
     if (speed_id) categoryConfigData.speed_id = speed_id;
-    if (horse_power_id) categoryConfigData.horse_power_id = horse_power_id;
     if (motor_type_id) categoryConfigData.motor_type_id = motor_type_id;
-    if (kilo_watt_id) categoryConfigData.kilo_watt_id = kilo_watt_id;
     if (size_id) categoryConfigData.size_id = size_id;
     if (gear_box_type_id) categoryConfigData.gear_box_type_id = gear_box_type_id;
 
@@ -313,9 +297,7 @@ export const createProduct = async (categoryId, data) => {
                     main_category: true,
                     phase: true,
                     speed: true,
-                    horse_power: true,
                     motor_type: true,
-                    kilo_watt: true,
                     size: true,
                     gear_box_type: true,
                 },
@@ -351,9 +333,7 @@ export const updateProducts = async (categoryId, productId, data) => {
     const categoryConfigData = {};
     if (data.phase_id) categoryConfigData.phase_id = data.phase_id;
     if (data.speed_id) categoryConfigData.speed_id = data.speed_id;
-    if (data.horse_power_id) categoryConfigData.horse_power_id = data.horse_power_id;
     if (data.motor_type_id) categoryConfigData.motor_type_id = data.motor_type_id;
-    if (data.kilo_watt_id) categoryConfigData.kilo_watt_id = data.kilo_watt_id;
     if (data.size_id) categoryConfigData.size_id = data.size_id;
     if (data.gear_box_type_id) categoryConfigData.gear_box_type_id = data.gear_box_type_id;
 
@@ -392,9 +372,7 @@ export const updateProducts = async (categoryId, productId, data) => {
                     main_category: true,
                     phase: true,
                     speed: true,
-                    horse_power: true,
                     motor_type: true,
-                    kilo_watt: true,
                     size: true,
                     gear_box_type: true
                 }
