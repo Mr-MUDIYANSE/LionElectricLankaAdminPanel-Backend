@@ -208,15 +208,15 @@ export const createProduct = async (categoryId, data) => {
     } = data;
 
     // Check if product title already exists (case-sensitive)
-    const existingProduct = await DB.product.findFirst({
-        where: {
-            title: title.trim(),
-        },
-    });
-
-    if (existingProduct) {
-        errors.push('This product already exists.');
-    }
+    // const existingProduct = await DB.product.findFirst({
+    //     where: {
+    //         title: title.trim(),
+    //     },
+    // });
+    //
+    // if (existingProduct) {
+    //     errors.push('This product already exists.');
+    // }
 
     if (errors.length > 0) {
         const error = new Error('Validation error');
@@ -226,8 +226,6 @@ export const createProduct = async (categoryId, data) => {
 
     if (!title || typeof title !== 'string' || title.trim() === '') {
         errors.push('Title is required and must be a non empty.');
-    } else if (title.trim().length > 100) {
-        errors.push('Title is too long (max 100 characters).');
     }
 
     if (!description || typeof description !== 'string' || description.trim() === '') {
