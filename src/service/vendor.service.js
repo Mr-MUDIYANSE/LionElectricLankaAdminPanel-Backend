@@ -1,59 +1,54 @@
 import DB from "../db/db.js";
 
-export const getAllCustomers = async () => {
-    const allCustomers = await DB.customer.findMany({
-        where: {
-            status_id: 1
-        },
-        include: {
-            status: true
-        },
-        orderBy: {
-            id: 'asc'
-        }
-    });
-    return allCustomers || [];
+export const getAllVendors = async () => {
+    try {
+        const vendors = await DB.vendor.findMany({
+            where: { status_id: 1 },
+            include: { status: true },
+            orderBy: { id: 'asc' }
+        });
+        return vendors;
+    } catch (err) {
+        throw new Error('Internal Server Error');
+    }
 };
 
-export const getCustomerById = async (id) => {
+export const getVendorById = async (id) => {
     if (!id || isNaN(id)) {
         const error = new Error('Invalid ID');
-        error.errors = ['Customer ID must be a number'];
+        error.errors = ['Vendor id must be a number'];
         throw error;
     }
 
-    const customer = await DB.customer.findUnique({
-        where: {id: parseInt(id)},
-        include: {
-            status: true,
-            invoices: true
-        }
+    const vendor = await DB.vendor.findUnique({
+        where: { id: parseInt(id) },
+        include: { status: true }
     });
 
-    if (!customer) {
-        const error = new Error('Customer not found');
-        error.errors = ['Customer with the given id does not exist'];
+    if (!vendor) {
+        const error = new Error('Vendor not found');
+        error.errors = ['Vendor with the given id does not exist'];
         throw error;
     }
 
-    if (customer.status_id === 2) {
-        const error = new Error('Customer is inactive');
-        error.errors = ['Customer with the given id is inactive'];
+    if (vendor.status_id === 2) {
+        const error = new Error('Vendor is inactive');
+        error.errors = ['Vendor with the given id is inactive'];
         throw error;
     }
-    return customer;
+    return vendor;
 };
 
-export const createCustomer = async (data) => {
+export const createVendor = async (data) => {
     const errors = [];
 
-    const {name, email, contact_no, address, status_id} = data;
+    const { company_name, email, contact_no, address, status_id } = data;
 
-    if (!name || typeof name !== 'string') {
-        errors.push('Name is required.');
+    if (!company_name || typeof company_name !== 'string') {
+        errors.push('Company name is required.');
     } else {
-        if (name.trim().length > 45) {
-            errors.push('Name is too long.');
+        if (company_name.trim().length > 45) {
+            errors.push('Company name is too long.');
         }
     }
 
@@ -75,15 +70,13 @@ export const createCustomer = async (data) => {
         errors.push('Status ID is required and must be a number.');
     }
 
-    //Check customer exists
-    const existCustomer = await DB.customer.findUnique({
-        where: {
-            contact_no: contact_no,
-        }
+    // Check if vendor with the same company name already exists
+    const existVendor = await DB.vendor.findFirst({
+        where: { company_name }
     });
 
-    if (existCustomer) {
-        errors.push('Customer already exist in this contact number.');
+    if (existVendor) {
+        errors.push('Vendor already exists.');
     }
 
     if (errors.length > 0) {
@@ -92,10 +85,10 @@ export const createCustomer = async (data) => {
         throw error;
     }
 
-    // Create Customer
-    const newCustomer = await DB.customer.create({
+    // Create new vendor
+    const newVendor = await DB.vendor.create({
         data: {
-            name: name.trim(),
+            company_name: company_name.trim(),
             email: email?.trim() || null,
             contact_no: contact_no.trim(),
             address: address.trim(),
@@ -103,27 +96,21 @@ export const createCustomer = async (data) => {
         }
     });
 
-    return newCustomer;
+    return newVendor;
 };
 
-export const updateCustomer = async (id, data) => {
+export const updateVendor = async (id, data) => {
     const errors = [];
 
-    if (!id || isNaN(id)) {
-        errors.push('Customer ID must be a valid number.');
-    }
+    const vendor = await getVendorById(id);
 
-    // Validate existing customer
-    await getCustomerById(id);
-
-    // Collect only valid fields for update
     const updateData = {};
 
-    if (data.name !== undefined) {
-        if (typeof data.name !== 'string') {
-            errors.push('Name must be valid.');
+    if (data.company_name !== undefined) {
+        if (typeof data.company_name !== 'string') {
+            errors.push('Company name must be valid.');
         } else {
-            updateData.name = data.name.trim();
+            updateData.company_name = data.company_name.trim();
         }
     }
 
@@ -163,44 +150,40 @@ export const updateCustomer = async (id, data) => {
         errors.push('At least one field must be provided to update.');
     }
 
-    // Validation errors
     if (errors.length > 0) {
         const error = new Error('Validation error');
         error.errors = errors;
         throw error;
     }
 
-    // Perform update with only given fields
-    const updatedCustomer = await DB.customer.update({
-        where: {id: parseInt(id)},
+    const updatedVendor = await DB.vendor.update({
+        where: { id: parseInt(id) },
         data: updateData
     });
 
-    return updatedCustomer;
+    return updatedVendor;
 };
 
-export const deleteCustomer = async (id) => {
+export const deleteVendor = async (id) => {
     if (!id || isNaN(id)) {
         const error = new Error('Invalid ID');
-        error.errors = ['Customer id must be a number'];
+        error.errors = ['Vendor id must be a number'];
         throw error;
     }
 
-    const customerId = parseInt(id);
+    const vendorId = parseInt(id);
 
-    // Ensure customer exists
-    await getCustomerById(customerId);
+    const vendor = await getVendorById(vendorId);
 
-    // Soft delete
-    await DB.customer.update({
-        where: {id: customerId},
-        data: {status_id: 2}
+    await DB.vendor.update({
+        where: { id: vendorId },
+        data: { status_id: 2 }
     });
 
-    // Return the full updated customer
-    const updatedCustomer = await DB.customer.findUnique({
-        where: {id: customerId},
-        include: {status: 1}
+    const deletedVendor = await DB.vendor.findUnique({
+        where: { id: vendorId },
+        include: { status: true }
     });
-    return updatedCustomer;
+
+    return deletedVendor;
 };

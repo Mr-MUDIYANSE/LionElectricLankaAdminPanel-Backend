@@ -42,6 +42,19 @@ model Customer {
   invoices   Invoice[]
 }
 
+model Vendor {
+  id           Int      @id @default(autoincrement())
+  company_name String   @unique @db.Text
+  email        String?  @db.VarChar(100)
+  contact_no   String   @db.VarChar(50)
+  address      String   @db.Text
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  status_id    Int
+  status       Status   @relation(fields: [status_id], references: [id])
+  stock        Stock[]
+}
+
 model Status {
   id            Int             @id @default(autoincrement())
   status        String          @db.VarChar(10)
@@ -52,6 +65,7 @@ model Status {
   product       Product[]
   main_category Main_Category[]
   stock         Stock[]
+  vendor        Vendor[]
 }
 
 model Brand {
@@ -153,6 +167,8 @@ model Stock {
   product      Product        @relation(fields: [product_id], references: [id])
   invoice_item Invoice_Item[]
   status       Status         @relation(fields: [status_id], references: [id])
+  Vendor       Vendor?        @relation(fields: [vendor_id], references: [id])
+  vendor_id    Int?
 }
 
 model Payment_Method {
@@ -186,6 +202,7 @@ model Invoice {
   payment_method Payment_Method  @relation(fields: [payment_method_id], references: [id])
   customer       Customer        @relation(fields: [customer_id], references: [id])
   payment_status Payment_Status? @relation(fields: [payment_status_id], references: [id])
+  vendorId       Int?
 }
 
 model Invoice_Item {
