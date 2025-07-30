@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {
-    createNewProduct,
+    createNewProduct, deleteProduct,
     filterProducts,
     filterProductsByTitle, getAllProducts,
     getProductsByCategoryId, updateProduct
@@ -14,5 +14,6 @@ productRouter.get('/category/:id/filter', filterProducts);
 productRouter.get('/category/:id/filter/title', filterProductsByTitle);
 productRouter.post('/create/category/:id', createNewProduct);
 productRouter.patch('/:productId/category/:categoryId/update', updateProduct);
+productRouter.delete('/:productId/delete', deleteProduct);
 
 export default productRouter;

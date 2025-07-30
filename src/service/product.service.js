@@ -31,16 +31,6 @@ export const getAllProduct = async () => {
         include: {
             status: true,
             brand: true,
-            category_config: {
-                include: {
-                    main_category: true,
-                    phase: true,
-                    speed: true,
-                    motor_type: true,
-                    size: true,
-                    gear_box_type: true
-                }
-            }
         }
     });
 
@@ -50,36 +40,39 @@ export const getAllProduct = async () => {
         throw error;
     }
 
-    // Remove null fields recursively
     return removeNullFields(products);
 }
 
-export const getProducts = async (id) => {
-    if (!id || isNaN(id)) {
+export const getProducts = async (categoryId) => {
+    if (!categoryId || isNaN(categoryId)) {
         const error = new Error('Invalid ID');
         error.errors = ['Category ID must be a number'];
         throw error;
     }
 
+    // Check if the category exists in the database
+    const category = await DB.main_Category.findUnique({
+        where: {id: categoryId},
+    });
+
+    if (!category) {
+        const error = new Error('Invalid category ID');
+        error.errors = ['Category with the given ID does not exist.'];
+        throw error;
+    }
+
     const products = await DB.product.findMany({
         where: {
-            category_config: {
-                main_category_id: Number(id)
-            }
+            main_category_id: categoryId,
         },
         include: {
-            status: true,
+            main_category: true,
             brand: true,
-            category_config: {
-                include: {
-                    main_category: true,
-                    phase: true,
-                    speed: true,
-                    motor_type: true,
-                    size: true,
-                    gear_box_type: true
-                }
-            }
+            phase: true,
+            size: true,
+            speed: true,
+            motor_type: true,
+            status: true,
         }
     });
 
@@ -89,9 +82,7 @@ export const getProducts = async (id) => {
         throw error;
     }
 
-    // Remove null fields recursively
     return removeNullFields(products);
-
 };
 
 export const getFilteredProducts = async (categoryId, filters) => {
@@ -101,8 +92,8 @@ export const getFilteredProducts = async (categoryId, filters) => {
         throw error;
     }
 
-    // Build filter for category_config
-    const categoryConfigFilter = {
+    // Build filter
+    const filter = {
         main_category_id: Number(categoryId),
     };
 
@@ -114,35 +105,41 @@ export const getFilteredProducts = async (categoryId, filters) => {
         'gear_box_type_id',
     ];
 
+    let filterApplied = false;
     for (const key of allowedFilterKeys) {
         if (filters[key]) {
             const value = Number(filters[key]);
             if (!isNaN(value)) {
-                categoryConfigFilter[key] = value;
+                filter[key] = value;
+                filterApplied = true; // At least one valid filter was applied
+            } else {
+                const error = new Error(`${key} must be a valid number.`);
+                error.errors = [`Invalid value for ${key}`];
+                throw error;
             }
         }
     }
 
-    // Query products with joined category_config filter
+    if (!filterApplied && Object.keys(filters).length > 0) {
+        const error = new Error('Invalid filter parameters.');
+        error.errors = ['No valid filters applied. Ensure the filter values are correct.'];
+        throw error;
+    }
+
     const products = await DB.product.findMany({
         where: {
-            category_config: {
-                ...categoryConfigFilter
-            },
+            ...filter,
+            status_id: 1,
         },
         include: {
             status: true,
             brand: true,
-            category_config: {
-                include: {
-                    main_category: true,
-                    phase: true,
-                    speed: true,
-                    motor_type: true,
-                    size: true,
-                    gear_box_type: true,
-                },
-            },
+            main_category: true,
+            phase: true,
+            speed: true,
+            motor_type: true,
+            size: true,
+            gear_box_type: true,
         },
     });
 
@@ -158,6 +155,8 @@ export const getFilteredProducts = async (categoryId, filters) => {
 export const getFilteredProductsByTitle = async (categoryId, product_title) => {
     const products = await DB.product.findMany({
         where: {
+            main_category_id: categoryId,
+            status_id:1,
             title: {
                 contains: product_title,
                 mode: 'insensitive'  // case-insensitive search
@@ -165,26 +164,21 @@ export const getFilteredProductsByTitle = async (categoryId, product_title) => {
         },
         include: {
             brand: true,
-            category_config: {
-                include: {
-                    main_category: true,
-                    phase: true,
-                    speed: true,
-                    motor_type: true,
-                    size: true,
-                    gear_box_type: true
-                }
-            }
+            main_category: true,
+            phase: true,
+            speed: true,
+            motor_type: true,
+            size: true,
+            gear_box_type: true
         }
     });
 
     if (!products || products.length === 0) {
         const error = new Error('No products');
-        error.errors = ['No matching products found'];
+        error.errors = ['No matching products found for the given title and category.'];
         throw error;
     }
 
-    // Remove null fields recursively
     return removeNullFields(products);
 };
 
@@ -193,6 +187,14 @@ export const createProduct = async (categoryId, data) => {
 
     if (!categoryId || isNaN(categoryId) || Number(categoryId) <= 0) {
         errors.push('Main Category ID must be a valid number.');
+    }
+
+    const category = await DB.main_Category.findUnique({
+        where: {id: categoryId},
+    });
+
+    if (!category) {
+        errors.push('Invalid category ID.');
     }
 
     const {
@@ -207,40 +209,41 @@ export const createProduct = async (categoryId, data) => {
         gear_box_type_id,
     } = data;
 
-    // Check if product title already exists (case-sensitive)
-    // const existingProduct = await DB.product.findFirst({
-    //     where: {
-    //         title: title.trim(),
-    //     },
-    // });
-    //
-    // if (existingProduct) {
-    //     errors.push('This product already exists.');
-    // }
-
-    if (errors.length > 0) {
-        const error = new Error('Validation error');
-        error.errors = errors;
-        throw error;
-    }
-
+    // Validate required fields
     if (!title || typeof title !== 'string' || title.trim() === '') {
-        errors.push('Title is required and must be a non empty.');
+        errors.push('Title is required and must be a non-empty string.');
     }
 
     if (!description || typeof description !== 'string' || description.trim() === '') {
-        errors.push('Description is required and must be a non empty.');
+        errors.push('Description is required and must be a non-empty string.');
     }
 
-    if (typeof warranty !== 'string') {
-        errors.push('Warranty must be a valid.');
+    if (typeof warranty !== 'string' || warranty.trim() === '') {
+        errors.push('Warranty must be a valid non-empty string.');
     }
 
     if (!brand_id || typeof brand_id !== 'number' || brand_id <= 0) {
         errors.push('Brand ID must be a valid number.');
     }
 
-    // Validate other FK IDs
+    // Validate category-specific fields
+    if (categoryId === 1) {  // Motor category
+        if (!size_id || size_id <= 0) errors.push('Motor category requires size_id.');
+        if (!speed_id || speed_id <= 0) errors.push('Motor category requires speed_id.');
+        if (!phase_id || phase_id <= 0) errors.push('Motor category requires phase_id.');
+        if (!motor_type_id || motor_type_id <= 0) errors.push('Motor category requires motor_type_id.');
+    } else if (categoryId === 2) {  // VFD category
+        if (!size_id || size_id <= 0) errors.push('VFD category requires size_id.');
+    } else if (categoryId === 3) {  // Gear Reducer category
+        if (!size_id || size_id <= 0) errors.push('Gear Reducer category requires size_id.');
+        if (!speed_id || speed_id <= 0) errors.push('Gear Reducer category requires speed_id.');
+        if (!gear_box_type_id || gear_box_type_id <= 0) errors.push('Gear Reducer category requires gear_box_type_id.');
+    } else if (categoryId === 4) {  // Stater Switch category
+        if (!size_id || size_id <= 0) errors.push('Stater Switch category requires size_id.');
+        if (!phase_id || phase_id <= 0) errors.push('Stater Switch category requires phase_id.');
+    }
+
+    // Validate foreign key IDs
     const numberFields = [
         {key: 'phase_id', value: phase_id},
         {key: 'speed_id', value: speed_id},
@@ -255,60 +258,56 @@ export const createProduct = async (categoryId, data) => {
         }
     });
 
-    // If there are validation errors, throw them
     if (errors.length > 0) {
         const error = new Error('Validation error');
         error.errors = errors;
         throw error;
     }
 
-    // Build category_config insert data
-    const categoryConfigData = {
-        main_category_id: Number(categoryId),
-    };
-
-    if (phase_id) categoryConfigData.phase_id = phase_id;
-    if (speed_id) categoryConfigData.speed_id = speed_id;
-    if (motor_type_id) categoryConfigData.motor_type_id = motor_type_id;
-    if (size_id) categoryConfigData.size_id = size_id;
-    if (gear_box_type_id) categoryConfigData.gear_box_type_id = gear_box_type_id;
-
-    // Create category config
-    const categoryConfig = await DB.category_Config.create({
-        data: categoryConfigData,
+    // Check product already exists
+    const existingProduct = await DB.product.findFirst({
+        where: {
+            title: title.trim(),
+            brand_id: brand_id,
+            main_category_id: categoryId,
+            phase_id: phase_id || null,
+            speed_id: speed_id || null,
+            motor_type_id: motor_type_id || null,
+            size_id: size_id || null,
+            gear_box_type_id: gear_box_type_id || null,
+        }
     });
 
-    // Create product
+    if (existingProduct) {
+        const error = new Error('Product with the same details already exists.');
+        error.errors = ['Product with the same details already exists.'];
+        throw error;
+    }
+
+    // Create the product
     const product = await DB.product.create({
         data: {
             title: title.trim(),
             description: description.trim(),
-            warranty,
-            brand_id,
+            warranty: warranty.trim(),
+            brand_id: brand_id,
             status_id: 1,
-            category_config_id: categoryConfig.id,
-        },
-        include: {
-            brand: true,
-            category_config: {
-                include: {
-                    main_category: true,
-                    phase: true,
-                    speed: true,
-                    motor_type: true,
-                    size: true,
-                    gear_box_type: true,
-                },
-            },
-        },
+            main_category_id: categoryId,
+            phase_id: phase_id || null,
+            speed_id: speed_id || null,
+            motor_type_id: motor_type_id || null,
+            size_id: size_id || null,
+            gear_box_type_id: gear_box_type_id || null,
+        }
     });
 
     return removeNullFields(product);
 };
 
 export const updateProducts = async (categoryId, productId, data) => {
+    categoryId = Number(categoryId);
 
-    if (!categoryId || isNaN(categoryId)) {
+    if (isNaN(categoryId)) {
         const error = new Error('Invalid Category ID');
         error.errors = ['Category ID must be a number'];
         throw error;
@@ -320,62 +319,82 @@ export const updateProducts = async (categoryId, productId, data) => {
         throw error;
     }
 
-    // Step 1: Prepare product update fields
     const productUpdateData = {};
+
     if (data.title) productUpdateData.title = data.title;
     if (data.description) productUpdateData.description = data.description;
     if (data.warranty) productUpdateData.warranty = data.warranty;
     if (data.brand_id) productUpdateData.brand_id = data.brand_id;
 
-    // Step 2: Prepare category config if provided
-    const categoryConfigData = {};
-    if (data.phase_id) categoryConfigData.phase_id = data.phase_id;
-    if (data.speed_id) categoryConfigData.speed_id = data.speed_id;
-    if (data.motor_type_id) categoryConfigData.motor_type_id = data.motor_type_id;
-    if (data.size_id) categoryConfigData.size_id = data.size_id;
-    if (data.gear_box_type_id) categoryConfigData.gear_box_type_id = data.gear_box_type_id;
-
-    // If there’s config data to update
-    if (Object.keys(categoryConfigData).length > 0) {
-        const product = await DB.product.findUnique({
-            where: { id: Number(productId) },
-            select: { category_config_id: true }
-        });
-
-        if (!product) {
-            const error = new Error('Product not found');
-            error.errors = ['Invalid product ID'];
-            throw error;
-        }
-
-        await DB.category_Config.update({
-            where: {
-                id: product.category_config_id
-            },
-            data: {
-                main_category_id: Number(categoryId),
-                ...categoryConfigData
-            }
-        });
+    if (categoryId === 1) {  // Motor category
+        if (data.size_id) productUpdateData.size_id = data.size_id;
+        if (data.speed_id) productUpdateData.speed_id = data.speed_id;
+        if (data.phase_id) productUpdateData.phase_id = data.phase_id;
+        if (data.motor_type_id) productUpdateData.motor_type_id = data.motor_type_id;
+    } else if (categoryId === 2) {  // VFD category
+        if (data.size_id) productUpdateData.size_id = data.size_id;
+    } else if (categoryId === 3) {  // Gear Reducer category
+        if (data.size_id) productUpdateData.size_id = data.size_id;
+        if (data.speed_id) productUpdateData.speed_id = data.speed_id;
+        if (data.gear_box_type_id) productUpdateData.gear_box_type_id = data.gear_box_type_id;
+    } else if (categoryId === 4) {  // Stater Switch category
+        if (data.size_id) productUpdateData.size_id = data.size_id;
+        if (data.phase_id) productUpdateData.phase_id = data.phase_id;
+    } else {
+        const error = new Error('Invalid category ID');
+        error.errors = ['Category ID is not valid.'];
+        throw error;
     }
 
-    // Step 3: Update the product
+    const existingProduct = await DB.product.findUnique({
+        where: {id: Number(productId)},
+    });
+
+    if (!existingProduct) {
+        const error = new Error('Product not found');
+        error.errors = ['Product with the given ID does not exist.'];
+        throw error;
+    }
+
     const updatedProduct = await DB.product.update({
-        where: { id: Number(productId) },
+        where: {id: Number(productId)},
         data: productUpdateData,
         include: {
             brand: true,
-            category_config: {
-                include: {
-                    main_category: true,
-                    phase: true,
-                    speed: true,
-                    motor_type: true,
-                    size: true,
-                    gear_box_type: true
-                }
-            }
+            main_category: true,
+            phase: true,
+            speed: true,
+            motor_type: true,
+            size: true,
+            gear_box_type: true
         }
+    });
+
+    return removeNullFields(updatedProduct);
+};
+
+export const productDelete = async (productId) => {
+    if (!productId || isNaN(productId)) {
+        const error = new Error('Invalid Product ID');
+        error.errors = ['Product ID must be a number'];
+        throw error;
+    }
+
+    const product = await DB.product.findUnique({
+        where: {id: Number(productId)},
+    });
+
+    if (!product) {
+        const error = new Error('Product not found');
+        error.errors = ['Product with the given ID does not exist.'];
+        throw error;
+    }
+
+    const updatedProduct = await DB.product.update({
+        where: {id: Number(productId)},
+        data: {
+            status_id: 2,
+        },
     });
 
     return removeNullFields(updatedProduct);

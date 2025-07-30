@@ -123,7 +123,7 @@ export const getInvoiceById = async (invoiceId) => {
 };
 
 export const createInvoices = async (customerId, data) => {
-    const {paid_amount, payment_method_id, items} = data;
+    const {paid_amount, total_amount, payment_method_id, items, cheque_date} = data;
 
     const errors = [];
     if (!customerId || isNaN(customerId)) errors.push("Valid customer ID required.");
@@ -141,9 +141,10 @@ export const createInvoices = async (customerId, data) => {
 
     if (!Array.isArray(items) || items.length === 0) errors.push("At least one invoice item required.");
     if (paid_amount < 0) errors.push("Paid amount is required.");
+    if (total_amount < 0) errors.push("Total amount is required.");
     if (!payment_method_id) errors.push("Payment method ID is required.");
 
-    if (payment_method_id === 4 || payment_method_id === 5 && !cheque_date) {  // Assuming '2' is the cheque payment method
+    if (payment_method_id === 4 || payment_method_id === 5 && !cheque_date) {  // Assuming '4,5' is the cheque payment method
         errors.push("Cheque date is required for cheque payments.");
     }
 
@@ -176,35 +177,30 @@ export const createInvoices = async (customerId, data) => {
         }
     }
 
-    // Calculate total value of invoice
-    let totalInvoiceValue = 0;
-    for (const item of items) {
-        totalInvoiceValue += item.qty * item.selling_price;
-    }
-
     // Validate paid_amount
-    if (Number(paid_amount) > totalInvoiceValue) {
+    if (Number(paid_amount) > total_amount) {
         const error = new Error("Paid amount cannot exceed total invoice value.");
-        error.errors = [`Paid amount (${paid_amount}) exceeds total value (${totalInvoiceValue}).`];
+        error.errors = [`Paid amount (${paid_amount}) exceeds total value (${total_amount}).`];
         throw error;
     }
 
     // Set payment_status_id based on paid_amount vs total
     let resolved_payment_status_id;
-    if (Number(paid_amount) === totalInvoiceValue) {
+    if (Number(paid_amount) === total_amount) {
         resolved_payment_status_id = 1; // Paid
     } else {
-        resolved_payment_status_id = 2; // Partially Paid
+        resolved_payment_status_id = 2; // Pending
     }
 
     // Create Invoice with Items
     const invoice = await DB.invoice.create({
         data: {
             paid_amount: Number(paid_amount),
+            total_amount:Number(total_amount),
             customer_id: Number(customerId),
             payment_method_id: Number(payment_method_id),
             payment_status_id: Number(resolved_payment_status_id),
-            cheque_date: payment_method_id === 2 ? cheque_date : null, // Only for cheque payment
+            cheque_date: payment_method_id === 4 || 5 ? cheque_date : null, // Only for cheque payment
             invoice_items: {
                 create: items.map(item => ({
                     qty: item.qty,
