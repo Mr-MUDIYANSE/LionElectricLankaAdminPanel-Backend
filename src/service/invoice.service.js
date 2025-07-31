@@ -279,25 +279,20 @@ export const updatedInvoices = async (invoiceId, data) => {
         throw error;
     }
 
-    // Calculate total amount
-    const totalAmount = invoice.invoice_items.reduce((sum, item) => {
-        return sum + item.selling_price * item.qty;
-    }, 0);
-
     // Calculate new paid amount
     const updatedPaidAmount = Number(invoice.paid_amount || 0) + Number(paid_amount);
 
-    if (updatedPaidAmount > totalAmount) {
+    if (updatedPaidAmount > invoice.total_amount) {
         const error = new Error("Paid amount cannot be greater than total invoice amount.");
         error.status = 400;
-        error.errors = [`Total paid amount (${updatedPaidAmount}) exceeds total invoice amount (${totalAmount})`];
+        error.errors = [`Total paid amount (${updatedPaidAmount}) exceeds total invoice amount (${invoice.total_amount})`];
         throw error;
     }
 
-    // Set payment status: 1 = Paid, 2 = Advanced
-    const payment_status_id = updatedPaidAmount === totalAmount ? 1 : 2;
+    // Set payment status: 1 = Paid, 2 = Pending
+    const payment_status_id = updatedPaidAmount === invoice.total_amount ? 1 : 2;
 
-    // Update the invoice
+    // // Update the invoice
     const updatedInvoice = await DB.invoice.update({
         where: {id: invoiceId},
         data: {
