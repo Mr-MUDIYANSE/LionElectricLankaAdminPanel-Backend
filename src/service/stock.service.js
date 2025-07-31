@@ -29,6 +29,9 @@ export const getAllStocks = async () => {
             where: {
                 status_id: 1,
             },
+            orderBy: {
+                created_at: 'desc',
+            },
             include: {
                 vendor: true,
                 product: {

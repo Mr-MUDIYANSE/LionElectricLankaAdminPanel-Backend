@@ -155,8 +155,7 @@ export const createStock = async (req, res) => {
             data: stock
         });
     } catch (err) {
-        console.log("err", err);
-        // Check for product or vendor not found (404)
+        // Check for product or vendor not found
         if (err.status === 404) {
             return res.status(404).json({
                 success: false,
