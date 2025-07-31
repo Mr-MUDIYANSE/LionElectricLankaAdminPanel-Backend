@@ -1,5 +1,6 @@
 import DB from "../db/db.js";
 import {startOfMonth, endOfMonth} from 'date-fns';
+import cryptoRandomString from "crypto-random-string";
 
 export const getAllInvoices = async (date) => {
     let whereClause = {};
@@ -144,7 +145,7 @@ export const createInvoices = async (customerId, data) => {
     if (total_amount < 0) errors.push("Total amount is required.");
     if (!payment_method_id) errors.push("Payment method ID is required.");
 
-    if (payment_method_id === 4 || payment_method_id === 5 && !cheque_date) {  // Assuming '4,5' is the cheque payment method
+    if ((payment_method_id === 4 || payment_method_id === 5) && !cheque_date) {  // Assuming '4,5' is the cheque payment method
         errors.push("Cheque date is required for cheque payments.");
     }
 
@@ -192,11 +193,28 @@ export const createInvoices = async (customerId, data) => {
         resolved_payment_status_id = 2; // Pending
     }
 
+    // Generate a unique invoice ID
+    let uniqueId = cryptoRandomString({length: 15, type: 'numeric'});
+
+    // Check if the generated ID already exists
+    let existingInvoice = await DB.invoice.findUnique({
+        where: {id: uniqueId}
+    });
+
+    // If the ID exists, regenerate until a unique one is found
+    while (existingInvoice) {
+        uniqueId = cryptoRandomString({length: 15, type: 'numeric'});
+        existingInvoice = await DB.invoice.findUnique({
+            where: {id: uniqueId}
+        });
+    }
+
     // Create Invoice with Items
     const invoice = await DB.invoice.create({
         data: {
+            id: uniqueId,
             paid_amount: Number(paid_amount),
-            total_amount:Number(total_amount),
+            total_amount: Number(total_amount),
             customer_id: Number(customerId),
             payment_method_id: Number(payment_method_id),
             payment_status_id: Number(resolved_payment_status_id),

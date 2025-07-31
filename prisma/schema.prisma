@@ -30,16 +30,17 @@ model Admin {
 }
 
 model Customer {
-  id         Int       @id @default(autoincrement())
-  name       String    @db.Text
-  email      String?   @db.VarChar(100)
-  contact_no String    @unique @db.VarChar(20)
-  address    String    @db.Text
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
+  id         Int         @id @default(autoincrement())
+  name       String      @db.Text
+  email      String?     @db.VarChar(100)
+  contact_no String      @unique @db.VarChar(20)
+  address    String      @db.Text
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
   status_id  Int
-  status     Status    @relation(fields: [status_id], references: [id])
+  status     Status      @relation(fields: [status_id], references: [id])
   invoices   Invoice[]
+  quotation  Quotation[]
 }
 
 model Vendor {
@@ -66,6 +67,7 @@ model Status {
   main_category Main_Category[]
   stock         Stock[]
   vendor        Vendor[]
+  Quotation     Quotation[]
 }
 
 model Brand {
@@ -165,10 +167,11 @@ model Stock {
   status_id  Int
   vendor_id  Int?
 
-  product      Product        @relation(fields: [product_id], references: [id])
-  invoice_item Invoice_Item[]
-  status       Status         @relation(fields: [status_id], references: [id])
-  vendor       Vendor?        @relation(fields: [vendor_id], references: [id])
+  product        Product          @relation(fields: [product_id], references: [id])
+  invoice_item   Invoice_Item[]
+  status         Status           @relation(fields: [status_id], references: [id])
+  vendor         Vendor?          @relation(fields: [vendor_id], references: [id])
+  Quotation_Item Quotation_Item[]
 }
 
 model Payment_Method {
@@ -188,7 +191,7 @@ model Payment_Status {
 }
 
 model Invoice {
-  id                String         @id @default(uuid())
+  id                String         @id
   paid_amount       Float?
   total_amount      Float?
   created_at        DateTime       @default(now())
@@ -202,12 +205,11 @@ model Invoice {
   payment_method Payment_Method  @relation(fields: [payment_method_id], references: [id])
   customer       Customer        @relation(fields: [customer_id], references: [id])
   payment_status Payment_Status? @relation(fields: [payment_status_id], references: [id])
-  vendorId       Int?
 }
 
 model Invoice_Item {
   id            Int      @id @default(autoincrement())
-  qty           Float
+  qty           Int
   selling_price Float
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
@@ -216,4 +218,30 @@ model Invoice_Item {
 
   stock   Stock   @relation(fields: [stock_id], references: [id])
   invoice Invoice @relation(fields: [invoice_id], references: [id])
+}
+
+model Quotation {
+  id              String           @id @default(uuid())
+  total_amount    Float?
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+  customer_id     Int
+  status_id       Int
+  quotation_items Quotation_Item[]
+
+  customer Customer @relation(fields: [customer_id], references: [id])
+  status   Status   @relation(fields: [status_id], references: [id])
+}
+
+model Quotation_Item {
+  id            Int      @id @default(autoincrement())
+  qty           Int
+  selling_price Float
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  stock_id      Int
+  quotation_id  String?
+
+  stock     Stock      @relation(fields: [stock_id], references: [id])
+  quotation Quotation? @relation(fields: [quotation_id], references: [id])
 }
