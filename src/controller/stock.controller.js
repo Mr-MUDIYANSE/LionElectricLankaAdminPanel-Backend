@@ -1,39 +1,40 @@
-import {
-    createProduct, getAllProduct,
-    getFilteredProducts,
-    getFilteredProductsByTitle,
-    getProducts,
-    updateProducts
-} from "../service/product.service.js";
 import {createStocks, getAllStocks, getFilteredStock, updateStocks} from "../service/stock.service.js";
 
 export const getAllStock = async (req, res) => {
     try {
         const products = await getAllStocks();
-        res.status(200).json({
+        if (!products || products.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No stock found.',
+                errors: ['No stocks available.'],
+                data: null
+            });
+        }
+        return res.status(200).json({
             success: true,
-            message: 'All stock retrieved',
+            message: 'All stock retrieved successfully.',
             data: products
         });
     } catch (err) {
-        res.status(500).json({
+        console.error('Error retrieving stocks:', err); // Logging the error for debugging
+        return res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: 'Internal Server Error.',
+            errors: err.errors || ['An error occurred while retrieving stock.'],
             data: null
         });
     }
-}
+};
 
 export const getFilterStock = async (req, res) => {
-
     const categoryId = req.params.id;
 
     if (!categoryId || isNaN(categoryId)) {
         return res.status(400).json({
             success: false,
-            message: 'Invalid or missing id parameter.',
-            errors: ['Category id id must be a number.'],
+            message: 'Invalid or missing category ID parameter.',
+            errors: ['Category ID must be a valid number.'],
             data: null
         });
     }
@@ -41,31 +42,40 @@ export const getFilterStock = async (req, res) => {
     try {
         const products = await getFilteredStock(categoryId);
 
+        if (!products || products.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No filtered stock found.',
+                errors: ['No stock matching the filter was found.'],
+                data: null
+            });
+        }
+
         res.status(200).json({
             success: true,
-            message: 'Filtered stock retrieved',
+            message: 'Filtered stock retrieved successfully.',
             data: products
         });
     } catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: 'Internal Server Error.',
+            errors: err.errors || ['An error occurred while retrieving filtered stock.'],
             data: null
         });
     }
 };
 
-
 export const createStock = async (req, res) => {
-    const productId = Number(req.params.id);
+    const productId = Number(req.params.productId);
+    const vendorId = Number(req.params.vendorId);
     const data = req.body;
 
     if (!productId || isNaN(productId)) {
         return res.status(400).json({
             success: false,
-            message: 'Invalid or missing id parameter.',
-            errors: ['Product id must be a number.'],
+            message: 'Invalid or missing product ID parameter.',
+            errors: ['Product ID must be a valid number.'],
             data: null
         });
     }
@@ -73,25 +83,41 @@ export const createStock = async (req, res) => {
     if (!data) {
         return res.status(400).json({
             success: false,
-            message: 'Please enter stock data.',
-            errors: ['Stock data required.'],
+            message: 'Stock data required.',
+            errors: ['Please provide stock data.'],
             data: null
         });
     }
 
     try {
-        const { stock, action } = await createStocks(productId, data);
+        const { stock, action } = await createStocks(productId, vendorId, data);
 
-        return res.status(200).json({
+        if (action === 'created') {
+            return res.status(201).json({
+                success: true,
+                message: 'New stock created successfully.',
+                data: stock
+            });
+        }
+
+        res.status(200).json({
             success: true,
-            message: action === 'updated' ? 'Quantity updated for existing stock.' : 'New stock created.',
+            message: 'Stock quantity updated successfully.',
             data: stock
         });
     } catch (err) {
+        if (err.errors) {
+            return res.status(400).json({
+                success: false,
+                message: err.message,
+                errors: err.errors || [],
+                data: null
+            });
+        }
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: 'Internal Server Error.',
+            errors: err.errors || ['An error occurred while creating/updating stock.'],
             data: null
         });
     }
@@ -104,33 +130,51 @@ export const updateStock = async (req, res) => {
     if (!stockId || isNaN(stockId)) {
         return res.status(400).json({
             success: false,
-            message: 'Invalid or missing id parameter.',
-            errors: ['Stock id must be a number.'],
+            message: 'Invalid or missing stock ID parameter.',
+            errors: ['Stock ID must be a valid number.'],
             data: null
         });
     }
 
-    if (!data){
+    if (!data) {
         return res.status(400).json({
             success: false,
-            message: 'At least one data is required to update.',
-            errors: ['stock data required.'],
+            message: 'At least one data field is required to update stock.',
+            errors: ['Stock data is required.'],
             data: null
         });
     }
 
     try {
         const updatedStock = await updateStocks(stockId, data);
-        return res.status(200).json({
+
+        if (!updatedStock) {
+            return res.status(404).json({
+                success: false,
+                message: 'Stock not found.',
+                errors: ['Invalid stock ID or stock does not exist.'],
+                data: null
+            });
+        }
+
+        res.status(200).json({
             success: true,
             message: 'Stock updated successfully.',
             data: updatedStock
         });
     } catch (err) {
+        if (err.errors) {
+            return res.status(400).json({
+                success: false,
+                message: err.message,
+                errors: err.errors || [],
+                data: null
+            });
+        }
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: 'Internal Server Error.',
+            errors: err.errors || ['An error occurred while updating stock.'],
             data: null
         });
     }

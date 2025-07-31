@@ -163,12 +163,12 @@ model Stock {
 
   product_id Int
   status_id  Int
+  vendor_id  Int?
 
   product      Product        @relation(fields: [product_id], references: [id])
   invoice_item Invoice_Item[]
   status       Status         @relation(fields: [status_id], references: [id])
-  Vendor       Vendor?        @relation(fields: [vendor_id], references: [id])
-  vendor_id    Int?
+  vendor       Vendor?        @relation(fields: [vendor_id], references: [id])
 }
 
 model Payment_Method {

@@ -24,92 +24,84 @@ const removeNullFields = (obj) => {
 };
 
 export const getAllStocks = async () => {
-    const stocks = await DB.stock.findMany({
-        where: {
-            status_id: 1,
-        },
-        include: {
-            product: {
-                include: {
-                    status: true,
-                    brand: true,
-                    category_config: {
-                        include: {
-                            main_category: true,
-                            phase: true,
-                            speed: true,
-                            motor_type: true,
-                            size: true,
-                            gear_box_type: true,
-                        },
+    try {
+        const stocks = await DB.stock.findMany({
+            where: {
+                status_id: 1,
+            },
+            include: {
+                vendor: true,
+                product: {
+                    include: {
+                        status: true,
+                        brand: true,
+                        main_category: true,
+                        phase: true,
+                        speed: true,
+                        motor_type: true,
+                        size: true,
+                        gear_box_type: true,
                     },
                 },
             },
-        },
-    });
+        });
 
-    if (!stocks || stocks.length === 0) {
-        const error = new Error("No stocks");
-        error.errors = ["No stocks found"];
-        throw error;
+        return stocks;
+    } catch (err) {
+        throw new Error('An error occurred while retrieving the stocks');
     }
-
-    return removeNullFields(stocks);
 };
 
 export const getFilteredStock = async (categoryId) => {
+
     if (!categoryId || isNaN(categoryId)) {
-        const error = new Error('Invalid Category ID');
-        error.errors = ['Category ID must be a valid number.'];
-        throw error;
+        throw new Error('Invalid Category ID');
     }
 
-    const stocks = await DB.stock.findMany({
-        where: {
-            status_id: 1,
-            product: {
-                category_config: {
+    try {
+        const stocks = await DB.stock.findMany({
+            where: {
+                status_id: 1,
+                product: {
                     main_category_id: Number(categoryId),
                 },
             },
-        },
-        include: {
-            product: {
-                include: {
-                    status: true,
-                    brand: true,
-                    category_config: {
-                        include: {
-                            main_category: true,
-                            phase: true,
-                            speed: true,
-                            motor_type: true,
-                            size: true,
-                            gear_box_type: true,
-                        },
+            include: {
+                vendor: true,
+                product: {
+                    include: {
+                        status: true,
+                        brand: true,
+                        main_category: true,
+                        phase: true,
+                        speed: true,
+                        motor_type: true,
+                        size: true,
+                        gear_box_type: true,
                     },
                 },
             },
-        },
-    });
+        });
 
-    if (!stocks || stocks.length === 0) {
-        const error = new Error("No stocks");
-        error.errors = ["No stocks found"];
-        throw error;
+        return stocks;
+
+    } catch (err) {
+        throw new Error('An error occurred while retrieving stocks');
     }
-
-    return removeNullFields(stocks);
 };
 
-export const createStocks = async (productId, data) => {
+export const createStocks = async (productId, vendorId, data) => {
     const errors = [];
 
     if (!productId || isNaN(productId) || Number(productId) <= 0) {
-        errors.push('Product id must be a valid.');
+        errors.push('Product id must be valid.');
     }
 
-    const { unit_buying_price, unit_selling_price, qty } = data;
+    if (!vendorId || isNaN(vendorId) || Number(vendorId) <= 0) {
+        errors.push('Vendor id must be valid.');
+    }
+
+    const {unit_buying_price, unit_selling_price, qty} = data;
 
     if (!unit_buying_price || isNaN(unit_buying_price) || unit_buying_price <= 0) {
         errors.push('Unit buying price must be a valid price.');
@@ -120,29 +112,35 @@ export const createStocks = async (productId, data) => {
     }
 
     if (!qty || isNaN(qty) || qty <= 0) {
-        errors.push('Quantity must be a valid.');
+        errors.push('Quantity must be valid.');
     }
 
     if (errors.length > 0) {
-        const error = new Error('Validation Error');
-        error.errors = errors;
-        throw error;
+        return res.status(400).json({
+            success: false,
+            message: 'Validation Error',
+            errors,
+            data: null
+        });
     }
 
-    // Check if product exists
     const existingProduct = await DB.product.findUnique({
-        where: { id: Number(productId) },
+        where: {id: Number(productId)},
     });
 
     if (!existingProduct) {
-        const error = new Error('Product not found.');
-        error.errors = ['Provided product id does not exist.'];
-        throw error;
+        return res.status(404).json({
+            success: false,
+            message: 'Product not found.',
+            errors: ['Product id does not exist.'],
+            data: null
+        });
     }
 
     const existingStock = await DB.stock.findFirst({
         where: {
             product_id: Number(productId),
+            vendor_id: Number(vendorId),
             unit_buying_price: Number(unit_buying_price),
             unit_selling_price: Number(unit_selling_price),
         },
@@ -150,56 +148,69 @@ export const createStocks = async (productId, data) => {
 
     if (existingStock) {
         const updatedStock = await DB.stock.update({
-            where: { id: existingStock.id },
+            where: {id: existingStock.id},
             data: {
                 qty: existingStock.qty + Number(qty),
-                status_id:1
+                status_id: 1
             },
         });
 
-        return { stock: updatedStock, action: 'updated' };
+        return res.status(200).json({
+            success: true,
+            message: 'Stock quantity updated.',
+            data: updatedStock
+        });
     } else {
         const newStock = await DB.stock.create({
             data: {
                 product_id: Number(productId),
+                vendor_id: Number(vendorId),
                 unit_buying_price: Number(unit_buying_price),
                 unit_selling_price: Number(unit_selling_price),
                 qty: Number(qty),
-                status_id:1
+                status_id: 1
             },
         });
 
-        return { stock: newStock, action: 'created' };
+        return res.status(201).json({
+            success: true,
+            message: 'New stock created.',
+            data: newStock
+        });
     }
+
 };
 
 export const updateStocks = async (stockId, data) => {
     if (!stockId || isNaN(stockId)) {
-        const error = new Error('Invalid stock ID');
-        error.errors = ['Stock id must be a number'];
-        throw error;
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid stock ID.',
+            errors: ['Stock id must be a valid number.'],
+            data: null
+        });
     }
 
-    // Prepare stock update fields
     const stockUpdateData = {};
     if (data.unit_buying_price) stockUpdateData.unit_buying_price = data.unit_buying_price;
     if (data.unit_selling_price) stockUpdateData.unit_selling_price = data.unit_selling_price;
     if (data.qty) stockUpdateData.qty = data.qty;
 
-    // If there’s config data to update
     if (Object.keys(stockUpdateData).length > 0) {
         const stock = await DB.stock.findUnique({
             where: {id: Number(stockId)}
         });
 
         if (!stock) {
-            const error = new Error('Stock not found');
-            error.errors = ['Invalid stock id'];
-            throw error;
+            return res.status(404).json({
+                success: false,
+                message: 'Stock not found.',
+                errors: ['Invalid stock id'],
+                data: null
+            });
         }
 
-        // Update the stock
-        const updatedProduct = await DB.stock.update({
+        const updatedStock = await DB.stock.update({
             where: {id: Number(stockId)},
             data: stockUpdateData,
             include: {
@@ -207,20 +218,21 @@ export const updateStocks = async (stockId, data) => {
                     include: {
                         status: true,
                         brand: true,
-                        category_config: {
-                            include: {
-                                main_category: true,
-                                phase: true,
-                                speed: true,
-                                motor_type: true,
-                                size: true,
-                                gear_box_type: true,
-                            },
-                        },
+                        main_category: true,
+                        phase: true,
+                        speed: true,
+                        motor_type: true,
+                        size: true,
+                        gear_box_type: true,
                     },
                 },
             },
         });
-        return removeNullFields(updatedProduct);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Stock updated successfully.',
+            data: removeNullFields(updatedStock)
+        });
     }
 };
