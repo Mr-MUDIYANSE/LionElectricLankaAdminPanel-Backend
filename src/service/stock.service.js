@@ -90,6 +90,42 @@ export const getFilteredStock = async (categoryId) => {
     }
 };
 
+export const getFilteredStockVendor = async (vendorId) => {
+
+    if (!vendorId || isNaN(vendorId)) {
+        throw new Error('Invalid Category ID');
+    }
+
+    try {
+        const stocks = await DB.stock.findMany({
+            where: {
+                status_id: 1,
+                vendor_id:Number(vendorId)
+            },
+            include: {
+                vendor: true,
+                product: {
+                    include: {
+                        status: true,
+                        brand: true,
+                        main_category: true,
+                        phase: true,
+                        speed: true,
+                        motor_type: true,
+                        size: true,
+                        gear_box_type: true,
+                    },
+                },
+            },
+        });
+
+        return stocks;
+
+    } catch (err) {
+        throw new Error('An error occurred while retrieving stocks');
+    }
+};
+
 export const createStocks = async (productId, vendorId, data) => {
     const errors = [];
 

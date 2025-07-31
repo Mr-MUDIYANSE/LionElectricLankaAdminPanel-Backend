@@ -1,4 +1,10 @@
-import {createStocks, getAllStocks, getFilteredStock, updateStocks} from "../service/stock.service.js";
+import {
+    createStocks,
+    getAllStocks,
+    getFilteredStock,
+    getFilteredStockVendor,
+    updateStocks
+} from "../service/stock.service.js";
 
 export const getAllStock = async (req, res) => {
     try {
@@ -41,6 +47,45 @@ export const getFilterStock = async (req, res) => {
 
     try {
         const products = await getFilteredStock(categoryId);
+
+        if (!products || products.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No filtered stock found.',
+                errors: ['No stock matching the filter was found.'],
+                data: null
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Filtered stock retrieved successfully.',
+            data: products
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: 'Internal Server Error.',
+            errors: err.errors || ['An error occurred while retrieving filtered stock.'],
+            data: null
+        });
+    }
+};
+
+export const getFilterStockByVendor = async (req, res) => {
+    const vendorId = req.params.id;
+
+    if (!vendorId || isNaN(vendorId)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid or missing category id parameter.',
+            errors: ['Vendor id must be a valid number.'],
+            data: null
+        });
+    }
+
+    try {
+        const products = await getFilteredStockVendor(vendorId);
 
         if (!products || products.length === 0) {
             return res.status(404).json({
