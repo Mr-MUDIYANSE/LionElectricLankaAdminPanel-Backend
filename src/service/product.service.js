@@ -56,8 +56,8 @@ export const getProducts = async (categoryId) => {
     });
 
     if (!category) {
-        const error = new Error('Invalid category ID');
-        error.errors = ['Category with the given ID does not exist.'];
+        const error = new Error('Invalid category id');
+        error.errors = ['Category with the given id does not exist.'];
         throw error;
     }
 
@@ -72,6 +72,7 @@ export const getProducts = async (categoryId) => {
             size: true,
             speed: true,
             motor_type: true,
+            gear_box_type:true,
             status: true,
         }
     });
