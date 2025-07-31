@@ -129,16 +129,19 @@ export const getFilteredStockVendor = async (vendorId) => {
 export const createStocks = async (productId, vendorId, data) => {
     const errors = [];
 
+    // Validate productId
     if (!productId || isNaN(productId) || Number(productId) <= 0) {
         errors.push('Product id must be valid.');
     }
 
+    // Validate vendorId
     if (!vendorId || isNaN(vendorId) || Number(vendorId) <= 0) {
         errors.push('Vendor id must be valid.');
     }
 
-    const {unit_buying_price, unit_selling_price, qty} = data;
+    const { unit_buying_price, unit_selling_price, qty } = data;
 
+    // Validate stock data
     if (!unit_buying_price || isNaN(unit_buying_price) || unit_buying_price <= 0) {
         errors.push('Unit buying price must be a valid price.');
     }
@@ -152,27 +155,32 @@ export const createStocks = async (productId, vendorId, data) => {
     }
 
     if (errors.length > 0) {
-        return res.status(400).json({
-            success: false,
-            message: 'Validation Error',
-            errors,
-            data: null
-        });
+        throw new Error('Validation Error', { errors });
     }
 
+    // Check if the product exists
     const existingProduct = await DB.product.findUnique({
-        where: {id: Number(productId)},
+        where: { id: Number(productId) },
     });
 
     if (!existingProduct) {
-        return res.status(404).json({
-            success: false,
-            message: 'Product not found.',
-            errors: ['Product id does not exist.'],
-            data: null
-        });
+        const error = new Error('Product not found.');
+        error.status = 404;
+        throw error;
     }
 
+    // Check if the vendor exists
+    const existingVendor = await DB.vendor.findUnique({
+        where: { id: Number(vendorId) },
+    });
+
+    if (!existingVendor) {
+        const error = new Error('Vendor not found.');
+        error.status = 404;
+        throw error;
+    }
+
+    // Check if the stock exists
     const existingStock = await DB.stock.findFirst({
         where: {
             product_id: Number(productId),
@@ -183,20 +191,18 @@ export const createStocks = async (productId, vendorId, data) => {
     });
 
     if (existingStock) {
+        // If stock exists, update it
         const updatedStock = await DB.stock.update({
-            where: {id: existingStock.id},
+            where: { id: existingStock.id },
             data: {
                 qty: existingStock.qty + Number(qty),
                 status_id: 1
             },
         });
 
-        return res.status(200).json({
-            success: true,
-            message: 'Stock quantity updated.',
-            data: updatedStock
-        });
+        return { stock: updatedStock, action: 'updated' };
     } else {
+        // If stock doesn't exist, create a new one
         const newStock = await DB.stock.create({
             data: {
                 product_id: Number(productId),
@@ -208,13 +214,8 @@ export const createStocks = async (productId, vendorId, data) => {
             },
         });
 
-        return res.status(201).json({
-            success: true,
-            message: 'New stock created.',
-            data: newStock
-        });
+        return { stock: newStock, action: 'created' };
     }
-
 };
 
 export const updateStocks = async (stockId, data) => {

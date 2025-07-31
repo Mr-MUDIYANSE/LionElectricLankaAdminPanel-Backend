@@ -116,6 +116,7 @@ export const createStock = async (req, res) => {
     const vendorId = Number(req.params.vendorId);
     const data = req.body;
 
+    // Validate the productId
     if (!productId || isNaN(productId)) {
         return res.status(400).json({
             success: false,
@@ -125,6 +126,7 @@ export const createStock = async (req, res) => {
         });
     }
 
+    // Validate the data
     if (!data) {
         return res.status(400).json({
             success: false,
@@ -135,6 +137,7 @@ export const createStock = async (req, res) => {
     }
 
     try {
+        // Call the createStocks function and get the stock and action
         const { stock, action } = await createStocks(productId, vendorId, data);
 
         if (action === 'created') {
@@ -145,21 +148,25 @@ export const createStock = async (req, res) => {
             });
         }
 
-        res.status(200).json({
+        // If action is 'updated'
+        return res.status(200).json({
             success: true,
             message: 'Stock quantity updated successfully.',
             data: stock
         });
     } catch (err) {
-        if (err.errors) {
-            return res.status(400).json({
+        console.log("err", err);
+        // Check for product or vendor not found (404)
+        if (err.status === 404) {
+            return res.status(404).json({
                 success: false,
                 message: err.message,
-                errors: err.errors || [],
+                errors: [err.message],
                 data: null
             });
         }
-        res.status(500).json({
+
+        return res.status(500).json({
             success: false,
             message: 'Internal Server Error.',
             errors: err.errors || ['An error occurred while creating/updating stock.'],
