@@ -341,10 +341,6 @@ export const updateProducts = async (categoryId, productId, data) => {
     } else if (categoryId === 4) {  // Stater Switch category
         if (data.size_id) productUpdateData.size_id = data.size_id;
         if (data.phase_id) productUpdateData.phase_id = data.phase_id;
-    } else {
-        const error = new Error('Invalid category ID');
-        error.errors = ['Category ID is not valid.'];
-        throw error;
     }
 
     const existingProduct = await DB.product.findUnique({
