@@ -51,16 +51,12 @@ export const getAllInvoices = async (date) => {
                                 include: {
                                     brand: true,
                                     status: true,
-                                    category_config: {
-                                        include: {
-                                            main_category: true,
-                                            phase: true,
-                                            speed: true,
-                                            motor_type: true,
-                                            size: true,
-                                            gear_box_type: true
-                                        }
-                                    }
+                                    main_category: true,
+                                    phase: true,
+                                    speed: true,
+                                    motor_type: true,
+                                    size: true,
+                                    gear_box_type: true
                                 }
                             }
                         }
@@ -93,18 +89,14 @@ export const getInvoiceById = async (invoiceId) => {
                                 include: {
                                     brand: true,
                                     status: true,
-                                    category_config: {
-                                        include: {
-                                            main_category: true,
-                                            phase: true,
-                                            speed: true,
-                                            motor_type: true,
-                                            kilo_watt: true,
-                                            horse_power: true,
-                                            size: true,
-                                            gear_box_type: true
-                                        }
-                                    }
+                                    main_category: true,
+                                    phase: true,
+                                    speed: true,
+                                    motor_type: true,
+                                    kilo_watt: true,
+                                    horse_power: true,
+                                    size: true,
+                                    gear_box_type: true
                                 }
                             }
                         }
