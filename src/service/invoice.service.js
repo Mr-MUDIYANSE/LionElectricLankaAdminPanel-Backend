@@ -93,8 +93,6 @@ export const getInvoiceById = async (invoiceId) => {
                                     phase: true,
                                     speed: true,
                                     motor_type: true,
-                                    kilo_watt: true,
-                                    horse_power: true,
                                     size: true,
                                     gear_box_type: true
                                 }

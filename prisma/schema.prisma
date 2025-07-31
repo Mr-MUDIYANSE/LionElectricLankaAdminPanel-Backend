@@ -191,7 +191,7 @@ model Payment_Status {
 }
 
 model Invoice {
-  id                String         @id
+  id                String         @id @unique
   paid_amount       Float?
   total_amount      Float?
   created_at        DateTime       @default(now())
