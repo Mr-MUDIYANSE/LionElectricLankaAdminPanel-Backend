@@ -223,12 +223,9 @@ export const createStocks = async (productId, vendorId, data) => {
 
 export const updateStocks = async (stockId, data) => {
     if (!stockId || isNaN(stockId)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid stock ID.',
-            errors: ['Stock id must be a valid number.'],
-            data: null
-        });
+        const error = new Error('Stock id required.');
+        error.status = 400;
+        throw error;
     }
 
     const stockUpdateData = {};
@@ -242,12 +239,9 @@ export const updateStocks = async (stockId, data) => {
         });
 
         if (!stock) {
-            return res.status(404).json({
-                success: false,
-                message: 'Stock not found.',
-                errors: ['Invalid stock id'],
-                data: null
-            });
+            const error = new Error('Stock not found.');
+            error.status = 404;
+            throw error;
         }
 
         const updatedStock = await DB.stock.update({
@@ -269,10 +263,6 @@ export const updateStocks = async (stockId, data) => {
             },
         });
 
-        return res.status(200).json({
-            success: true,
-            message: 'Stock updated successfully.',
-            data: removeNullFields(updatedStock)
-        });
+        return updatedStock;
     }
 };
