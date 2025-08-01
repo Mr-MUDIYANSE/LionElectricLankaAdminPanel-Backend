@@ -28,12 +28,8 @@ export const getDashboardDataByRange = async (range) => {
                         include: {
                             product: {
                                 include: {
-                                    category_config: {
-                                        include: {
-                                            main_category: true,
-                                        },
-                                    },
-                                },
+                                    main_category: true,
+                                }
                             },
                         },
                     },
@@ -50,7 +46,7 @@ export const getDashboardDataByRange = async (range) => {
     const categorySales = {};
     invoices.forEach(inv => {
         inv.invoice_items.forEach(item => {
-            const cat = item.stock.product.category_config.main_category.name;
+            const cat = item.stock.product.main_category.name;
             if (!categorySales[cat]) categorySales[cat] = 0;
             categorySales[cat] += item.qty;
         });

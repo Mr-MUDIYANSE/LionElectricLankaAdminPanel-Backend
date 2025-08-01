@@ -1,11 +1,34 @@
 import DB from "../db/db.js";
 
+// function to recursively remove null or undefined fields
+const removeNullFields = (obj) => {
+    // Convert Date to string
+    if (obj instanceof Date) {
+        return obj.toISOString();
+    }
+
+    if (Array.isArray(obj)) {
+        return obj.map(removeNullFields).filter(item => item !== null);
+    } else if (obj !== null && typeof obj === 'object') {
+        const cleaned = {};
+        for (const key in obj) {
+            const value = removeNullFields(obj[key]);
+            if (value !== null && value !== undefined) {
+                cleaned[key] = value;
+            }
+        }
+        return cleaned;
+    } else {
+        return obj === null ? undefined : obj;
+    }
+};
+
 export const getAllVendors = async () => {
     try {
         const vendors = await DB.vendor.findMany({
-            where: { status_id: 1 },
-            include: { status: true },
-            orderBy: { id: 'asc' }
+            where: {status_id: 1},
+            include: {status: true},
+            orderBy: {id: 'asc'}
         });
         return vendors;
     } catch (err) {
@@ -22,7 +45,25 @@ export const getVendorById = async (id) => {
 
     const vendor = await DB.vendor.findUnique({
         where: { id: parseInt(id) },
-        include: { status: true }
+        include: {
+            status: true,
+            stock: {
+                include: {
+                    product: {
+                        include: {
+                            status: true,
+                            brand: true,
+                            main_category: true,
+                            phase: true,
+                            speed: true,
+                            motor_type: true,
+                            size: true,
+                            gear_box_type: true,
+                        },
+                    },
+                },
+            },
+        },
     });
 
     if (!vendor) {
@@ -36,13 +77,13 @@ export const getVendorById = async (id) => {
         error.errors = ['Vendor with the given id is inactive'];
         throw error;
     }
-    return vendor;
+    return removeNullFields(vendor);
 };
 
 export const createVendor = async (data) => {
     const errors = [];
 
-    const { company_name, email, contact_no, address, status_id } = data;
+    const {company_name, email, contact_no, address, status_id} = data;
 
     if (!company_name || typeof company_name !== 'string') {
         errors.push('Company name is required.');
@@ -72,7 +113,7 @@ export const createVendor = async (data) => {
 
     // Check if vendor with the same company name already exists
     const existVendor = await DB.vendor.findFirst({
-        where: { company_name }
+        where: {company_name}
     });
 
     if (existVendor) {
@@ -157,7 +198,7 @@ export const updateVendor = async (id, data) => {
     }
 
     const updatedVendor = await DB.vendor.update({
-        where: { id: parseInt(id) },
+        where: {id: parseInt(id)},
         data: updateData
     });
 
@@ -176,13 +217,13 @@ export const deleteVendor = async (id) => {
     const vendor = await getVendorById(vendorId);
 
     await DB.vendor.update({
-        where: { id: vendorId },
-        data: { status_id: 2 }
+        where: {id: vendorId},
+        data: {status_id: 2}
     });
 
     const deletedVendor = await DB.vendor.findUnique({
-        where: { id: vendorId },
-        include: { status: true }
+        where: {id: vendorId},
+        include: {status: true}
     });
 
     return deletedVendor;
