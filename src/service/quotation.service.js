@@ -164,8 +164,10 @@ export const createQuotations = async (customerId, data) => {
         }
     }
 
+    const uppercaseLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
     // Generate a unique quotation ID
-    let uniqueId = cryptoRandomString({length: 15, type: 'distinguishable'});
+    let uniqueId = cryptoRandomString({ length: 15, characters: uppercaseLetters });
 
     // Check if the generated ID already exists
     let existingQuotation = await DB.quotation.findUnique({
@@ -174,7 +176,7 @@ export const createQuotations = async (customerId, data) => {
 
     // If the ID exists, regenerate until a unique one is found
     while (existingQuotation) {
-        uniqueId = cryptoRandomString({length: 15, type: 'distinguishable'});
+        uniqueId = cryptoRandomString({ length: 15, characters: uppercaseLetters });
         existingQuotation = await DB.quotation.findUnique({
             where: {id: uniqueId}
         });
