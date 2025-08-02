@@ -221,8 +221,9 @@ model Invoice_Item {
 }
 
 model Quotation {
-  id              String           @id @default(uuid())
+  id              String           @id @unique
   total_amount    Float?
+  expires_at      DateTime
   created_at      DateTime         @default(now())
   updated_at      DateTime         @updatedAt
   customer_id     Int
