@@ -31,6 +31,12 @@ export const getAllProduct = async () => {
         include: {
             status: true,
             brand: true,
+            main_category: true,
+            phase: true,
+            speed: true,
+            motor_type: true,
+            size: true,
+            gear_box_type: true,
         }
     });
 
