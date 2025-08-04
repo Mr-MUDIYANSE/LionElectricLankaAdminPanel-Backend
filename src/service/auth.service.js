@@ -5,7 +5,7 @@ import {tokenGenerate} from '../utils/jwt.js';
 export const createAdmin = async (data) => {
     const errors = [];
 
-    const { first_name, last_name, username, email, password, status_id } = data;
+    const { first_name, last_name, username, email, password } = data;
 
     if (!first_name || typeof first_name !== 'string' || first_name.trim().length < 2) {
         errors.push('First name is required and must be at least 2 characters.');
@@ -42,10 +42,6 @@ export const createAdmin = async (data) => {
         });
     }
 
-    if (status_id === undefined || isNaN(status_id)) {
-        errors.push('Status ID is required and must be a number.');
-    }
-
     if (errors.length > 0) {
         const error = new Error('Validation error');
         error.errors = errors;
@@ -53,15 +49,28 @@ export const createAdmin = async (data) => {
     }
 
     // Check for existing username
-    const existingAdmin = await DB.admin.findUnique({
+    const existingUsername = await DB.admin.findUnique({
         where: {
             username
         }
     });
 
-    if (existingAdmin) {
-        const error = new Error('Admin created faild');
+    if (existingUsername) {
+        const error = new Error('Admin creation failed');
         error.errors = ['Username already exists'];
+        throw error;
+    }
+
+    // Check for existing email
+    const existingEmail = await DB.admin.findUnique({
+        where: {
+            email
+        }
+    });
+
+    if (existingEmail) {
+        const error = new Error('Admin creation failed');
+        error.errors = ['Email already exists'];
         throw error;
     }
 
@@ -74,7 +83,7 @@ export const createAdmin = async (data) => {
             username,
             email,
             password: hashedPassword,
-            status_id
+            status_id:1
         }
     });
 
