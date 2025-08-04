@@ -272,7 +272,7 @@ export const deleteQuotationById = async (quotationId) => {
         throw error;
     }
 
-    // Fetch the existing quotation
+    // Fetch the existing quotation data
     const quotation = await DB.quotation.findUnique({
         where: {id: quotationId}
     });
