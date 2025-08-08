@@ -2,7 +2,7 @@ import {createAdmin, loginAdmin} from "../service/auth.service.js";
 
 export const create = async (req, res) => {
     try {
-        const admin = await createAdmin(req.body);
+        const admin = await createAdmin(req.query);
 
         res.status(201).json({
             success: true,
