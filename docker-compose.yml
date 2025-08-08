@@ -5,23 +5,6 @@ services:
       - "4000:4000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:2001@server_db:5432/lion-electric-lanka
+      - DATABASE_URL=postgresql://postgres:2001@localhost:5432/lion-electric-lanka
       - PORT=4000
-    depends_on:
-      - server_db
     command: ssh -c "npx prisma migrate dev --name init && npm start"
-
-  server_db:
-    image: postgres:latest
-    restart: always
-    environment:
-      POSTGRES_PASSWORD:2001
-      POSTGRES_USER:postgres
-      POSTGRES_DB: lion-electric-lanka
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
