@@ -1,8 +1,32 @@
 FROM node:lts-alpine3.20
-WORKDIR /lionserver
-COPY . .
+# Install required system dependencies for Prisma
+RUN apk add --no-cache openssl
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first (better caching)
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies (including devDependencies for Prisma)
 RUN npm install
-RUN npm run build
+
+# Generate Prisma client
 RUN npx prisma generate
+
+# Copy the rest of the application
+COPY .env .
+COPY . .
+
+# Install only production dependencies
+RUN npm prune --production
+
+# Set environment to production
+ENV NODE_ENV=production
+
+# Expose port
 EXPOSE 4000
-CMD ["npm","start"]
+
+# Run the app
+CMD ["npm", "start"]
