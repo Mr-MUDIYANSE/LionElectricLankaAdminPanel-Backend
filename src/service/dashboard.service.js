@@ -52,16 +52,36 @@ export const getDashboardDataByRange = async (range) => {
         });
     });
 
-    // Total Profit Calculation
-    let totalProfit = 0;
+    let profit = 0;
+
     invoices.forEach(inv => {
+        let invoiceProfit = 0;
+
         inv.invoice_items.forEach(item => {
-            const sellingPrice = item.selling_price;
-            const buyingPrice = item.stock.unit_buying_price;
-            const qty = item.qty;
-            totalProfit += (sellingPrice - buyingPrice) * qty;
+            const sellingPrice = Number(item.selling_price) || 0;
+            const qty = Number(item.qty) || 0;
+            invoiceProfit += sellingPrice * qty;
+
+            // console.log("Item - selling price:", sellingPrice);
+            // console.log("Item - quantity:", qty);
         });
+
+        const invoiceTotal = Number(inv.total_amount) || 0;
+        const invoiceDiscount = invoiceProfit - invoiceTotal;
+
+        profit += invoiceTotal - invoiceDiscount;
+
+        console.log("--------------------------------");
+        console.log("Invoice ID:", inv.id);
+        console.log("Total Selling:", invoiceProfit);
+        console.log("Discount:", invoiceDiscount);
+        console.log("Invoice Total Amount:", invoiceTotal);
+        console.log("--------------------------------");
     });
+
+    const totalProfit = profit - totalRevenue;
+    console.log("Total Profit:", totalProfit);
+
 
     // Top Products
     const productSales = {};
