@@ -26,9 +26,6 @@ const removeNullFields = (obj) => {
 export const getAllStocks = async () => {
     try {
         const stocks = await DB.stock.findMany({
-            where: {
-                status_id: 1,
-            },
             orderBy: {
                 created_at: 'desc',
             },
@@ -64,7 +61,6 @@ export const getFilteredStock = async (categoryId) => {
     try {
         const stocks = await DB.stock.findMany({
             where: {
-                status_id: 1,
                 product: {
                     main_category_id: Number(categoryId),
                 },
@@ -102,7 +98,6 @@ export const getFilteredStockVendor = async (vendorId) => {
     try {
         const stocks = await DB.stock.findMany({
             where: {
-                status_id: 1,
                 vendor_id:Number(vendorId)
             },
             include: {

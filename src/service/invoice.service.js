@@ -237,14 +237,14 @@ export const createInvoices = async (customerId, data) => {
         });
 
         // If quantity is now 0, mark status as INACTIVE
-        if (updatedStock.qty === 0) {
-            await DB.stock.update({
-                where: {id: item.stock_id},
-                data: {
-                    status_id: 2
-                }
-            });
-        }
+        // if (updatedStock.qty === 0) {
+        //     await DB.stock.update({
+        //         where: {id: item.stock_id},
+        //         data: {
+        //             status_id: 2
+        //         }
+        //     });
+        // }
     }
 
 
