@@ -39,7 +39,7 @@ export const getDashboardDataByRange = async (range) => {
     });
 
     const totalOrders = invoices.length;
-    const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
+    const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
     const avgOrderValue = totalOrders ? parseFloat((totalRevenue / totalOrders).toFixed(2)) : 0;
 
     // Sales by Category
@@ -74,12 +74,13 @@ export const getDashboardDataByRange = async (range) => {
         console.log("--------------------------------");
         console.log("Invoice ID:", inv.id);
         console.log("Total Selling:", invoiceProfit);
+        console.log("profit:", profit);
         console.log("Discount:", invoiceDiscount);
         console.log("Invoice Total Amount:", invoiceTotal);
         console.log("--------------------------------");
     });
 
-    const totalProfit = profit - totalRevenue;
+    const totalProfit = totalRevenue - profit;
     console.log("Total Profit:", totalProfit);
 
 
