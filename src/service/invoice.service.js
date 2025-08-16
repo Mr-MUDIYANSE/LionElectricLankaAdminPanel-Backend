@@ -407,3 +407,24 @@ export const updateChequePayment = async (paymentId, data) => {
 
     return updatedCheque;
 };
+
+export const getPaymentHistoryByInvoiceId = async (invoiceId) => {
+    if (!invoiceId) {
+        const error = new Error("Invoice ID is required.");
+        error.status = 400;
+        throw error;
+    }
+
+    const paymentHistory = await DB.payment_History.findMany({
+        where: { invoice_id: invoiceId },
+        include: { chequeDetail: true }
+    });
+
+    if (!paymentHistory) {
+        const error = new Error(`Invoice with ID ${invoiceId} not found.`);
+        error.status = 404;
+        throw error;
+    }
+
+    return paymentHistory;
+};

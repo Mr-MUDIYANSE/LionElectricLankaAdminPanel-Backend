@@ -1,7 +1,7 @@
 import {
     createInvoices,
     getAllInvoices,
-    getInvoiceById, updateChequePayment,
+    getInvoiceById, getPaymentHistoryByInvoiceId, updateChequePayment,
     updatedInvoices
 } from "../service/invoice.service.js";
 
@@ -153,6 +153,27 @@ export const updateCheque = async (req, res) => {
     } catch (err) {
         const statusCode = err.errors ? 400 : 500;
         res.status(statusCode).json({
+            success: false,
+            message: err.message,
+            errors: err.errors || [],
+            data: null
+        });
+    }
+};
+
+export const getPaymentHistory = async (req, res) => {
+    const inId = req.query.invoiceId;
+
+    try {
+        const paymentHistory = await getPaymentHistoryByInvoiceId(inId);
+
+        return res.status(200).json({
+            success: true,
+            message: `Payment history for invoice ID ${inId} fetched successfully.`,
+            data: paymentHistory
+        });
+    } catch (err) {
+        return res.status(err.status || 500).json({
             success: false,
             message: err.message,
             errors: err.errors || [],
