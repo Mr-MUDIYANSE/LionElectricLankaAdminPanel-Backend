@@ -114,7 +114,7 @@ export const getInvoiceById = async (invoiceId) => {
 };
 
 export const createInvoices = async (customerId, data) => {
-    const {paid_amount, total_amount, payment_method_id, items, cheque_date} = data;
+    const {total_amount, paid_amount, payment_type, items, chequeDetail} = data;
 
     const errors = [];
     if (!customerId || isNaN(customerId)) errors.push("Valid customer ID required.");
@@ -122,7 +122,6 @@ export const createInvoices = async (customerId, data) => {
     const customer = await DB.customer.findUnique({
         where: {id: Number(customerId)}
     });
-
     if (!customer) {
         const error = new Error(`Customer not found for ID ${customerId}`);
         error.status = 404;
@@ -131,12 +130,16 @@ export const createInvoices = async (customerId, data) => {
     }
 
     if (!Array.isArray(items) || items.length === 0) errors.push("At least one invoice item required.");
-    if (paid_amount < 0) errors.push("Paid amount is required.");
-    if (total_amount < 0) errors.push("Total amount is required.");
-    if (!payment_method_id) errors.push("Payment method ID is required.");
+    if (paid_amount < 0) errors.push("Paid amount cannot be negative.");
+    if (total_amount <= 0) errors.push("Total amount must be greater than zero.");
+    if (!payment_type) errors.push("Payment type is required.");
+    const validPaymentTypes = ["CASH", "CHEQUE"];
+    if (!validPaymentTypes.includes(payment_type)) {
+        errors.push(`Invalid payment type. Must be one of: ${validPaymentTypes.join(", ")}`);
+    }
 
-    if ((payment_method_id === 4 || payment_method_id === 5) && !cheque_date) {  // Assuming '4,5' is the cheque payment method
-        errors.push("Cheque date is required for cheque payments.");
+    if (payment_type === "CHEQUE" && !chequeDetail) {
+        errors.push("Cheque details are required for cheque payments.");
     }
 
     if (errors.length > 0) {
@@ -145,22 +148,13 @@ export const createInvoices = async (customerId, data) => {
         throw error;
     }
 
-    // Validate stock before creating invoice
+    // validate stock
     for (const item of items) {
         const stock = await DB.stock.findUnique({
-            where: {
-                id: item.stock_id,
-                status_id: 1
-            },
-            include: {
-                product: true
-            }
+            where: {id: item.stock_id},
+            include: {product: true}
         });
-
-        if (!stock) {
-            throw new Error(`Stock ID ${item.stock_id} not found`);
-        }
-
+        if (!stock) throw new Error(`Stock ID ${item.stock_id} not found`);
         if (stock.qty < item.qty) {
             throw new Error(
                 `Insufficient stock for product "${stock.product.title}". Available: ${stock.qty}, Required: ${item.qty}`
@@ -168,95 +162,91 @@ export const createInvoices = async (customerId, data) => {
         }
     }
 
-    // Validate paid_amount
-    if (Number(paid_amount) > total_amount) {
-        const error = new Error("Paid amount cannot exceed total invoice value.");
-        error.errors = [`Paid amount (${paid_amount}) exceeds total value (${total_amount}).`];
-        throw error;
+    // decide invoice status
+    let invoiceStatus = "PENDING";
+
+    if (payment_type === "CASH") {
+        if (paid_amount === total_amount) {
+            invoiceStatus = "PAID";
+        } else if (paid_amount > 0) {
+            invoiceStatus = "PARTIALLY_PAID";
+        }
+    } else if (payment_type === "CHEQUE") {
+        // For cheque, always keep pending until cheque is cleared
+        invoiceStatus = "PENDING";
     }
 
-    // Set payment_status_id based on paid_amount vs total
-    let resolved_payment_status_id;
-    if (Number(paid_amount) === total_amount) {
-        resolved_payment_status_id = 1; // Paid
-    } else {
-        resolved_payment_status_id = 2; // Pending
+    // generate invoice id
+    let uniqueId = cryptoRandomString({length: 15, type: "numeric"});
+    while (await DB.invoice.findUnique({where: {id: uniqueId}})) {
+        uniqueId = cryptoRandomString({length: 15, type: "numeric"});
     }
 
-    // Generate a unique invoice ID
-    let uniqueId = cryptoRandomString({length: 15, type: 'numeric'});
-
-    // Check if the generated ID already exists
-    let existingInvoice = await DB.invoice.findUnique({
-        where: {id: uniqueId}
-    });
-
-    // If the ID exists, regenerate until a unique one is found
-    while (existingInvoice) {
-        uniqueId = cryptoRandomString({length: 15, type: 'numeric'});
-        existingInvoice = await DB.invoice.findUnique({
-            where: {id: uniqueId}
-        });
-    }
-
-    // Create Invoice with Items
+    // create invoice with nested items + payments
     const invoice = await DB.invoice.create({
         data: {
             id: uniqueId,
-            paid_amount: Number(paid_amount),
             total_amount: Number(total_amount),
             customer_id: Number(customerId),
-            payment_method_id: Number(payment_method_id),
-            payment_status_id: Number(resolved_payment_status_id),
-            cheque_date: payment_method_id === 4 || 5 ? cheque_date : null, // Only for cheque payment
+            status: invoiceStatus,
             invoice_items: {
-                create: items.map(item => ({
+                create: items.map((item) => ({
                     qty: item.qty,
                     selling_price: item.selling_price,
-                    stock: {
-                        connect: {id: item.stock_id}
-                    }
+                    stock: {connect: {id: item.stock_id}}
                 }))
+            },
+            payment_history: {
+                create: {
+                    paid_amount: Number(paid_amount),
+                    payment_type: payment_type,
+                    status: payment_type === "CASH" ? "CLEARED" : "PENDING",
+                    ...(payment_type === "CHEQUE" && chequeDetail
+                        ? {
+                            chequeDetail: {
+                                create: {
+                                    cheque_number: chequeDetail.cheque_number,
+                                    bank_name: chequeDetail.bank_name,
+                                    cheque_date: new Date(chequeDetail.cheque_date),
+                                    due_date: chequeDetail.due_date ? new Date(chequeDetail.due_date) : null,
+                                }
+                            }
+                        }
+                        : {})
+                }
             }
         },
         include: {
-            invoice_items: true
+            invoice_items: true,
+            payment_history: {include: {chequeDetail: true}}
         }
     });
 
-    // Deduct Stock Quantities and update status if qty becomes 0
-    for (const item of items) {
-        // First, deduct the quantity
-        const updatedStock = await DB.stock.update({
-            where: {id: item.stock_id},
-            data: {
-                qty: {
-                    decrement: item.qty
-                }
-            }
-        });
-
-        // If quantity is now 0, mark status as INACTIVE
-        // if (updatedStock.qty === 0) {
-        //     await DB.stock.update({
-        //         where: {id: item.stock_id},
-        //         data: {
-        //             status_id: 2
-        //         }
-        //     });
-        // }
-    }
-
+    // update stock qty
+    // for (const item of items) {
+    //     await DB.stock.update({
+    //         where: { id: item.stock_id },
+    //         data: { qty: { decrement: item.qty } }
+    //     });
+    // }
 
     return invoice;
 };
 
 export const updatedInvoices = async (invoiceId, data) => {
-    const {paid_amount} = data;
+    const {paid_amount, payment_type, chequeDetail} = data;
 
     const errors = [];
     if (!invoiceId) errors.push("Invoice ID is required.");
-    if (paid_amount == null || isNaN(paid_amount)) errors.push("Valid paid amount is required.");
+    if (paid_amount == null || isNaN(paid_amount) || paid_amount < 0) errors.push("Valid paid amount is required.");
+    const validPaymentTypes = ["CASH", "CHEQUE"];
+    if (!payment_type || !validPaymentTypes.includes(payment_type)) {
+        errors.push(`Invalid payment type. Must be one of: ${validPaymentTypes.join(", ")}`);
+    }
+
+    if (payment_type === "CHEQUE" && !chequeDetail) {
+        errors.push("Cheque details are required for cheque payments.");
+    }
 
     if (errors.length > 0) {
         const error = new Error("Validation failed");
@@ -269,8 +259,8 @@ export const updatedInvoices = async (invoiceId, data) => {
         where: {id: invoiceId},
         include: {
             invoice_items: true,
-            payment_status: true
-        },
+            payment_history: {include: {chequeDetail: true}}
+        }
     });
 
     if (!invoice) {
@@ -279,41 +269,141 @@ export const updatedInvoices = async (invoiceId, data) => {
         throw error;
     }
 
-    // Calculate new paid amount
-    const updatedPaidAmount = Number(invoice.paid_amount || 0) + Number(paid_amount);
+    // Calculate total already paid
+    const totalPaid = invoice.payment_history.reduce((sum, ph) => sum + ph.paid_amount, 0);
 
-    if (updatedPaidAmount > invoice.total_amount) {
-        const error = new Error("Paid amount cannot be greater than total invoice amount.");
+    // Prevent overpayment
+    if (totalPaid + Number(paid_amount) > invoice.total_amount) {
+        const error = new Error("Paid amount exceeds total invoice amount.");
         error.status = 400;
-        error.errors = [`Total paid amount (${updatedPaidAmount}) exceeds total invoice amount (${invoice.total_amount})`];
+        error.errors = [`Total paid (${totalPaid + Number(paid_amount)}) cannot exceed invoice total (${invoice.total_amount})`];
         throw error;
     }
 
-    // Set payment status: 1 = Paid, 2 = Pending
-    const payment_status_id = updatedPaidAmount === invoice.total_amount ? 1 : 2;
+    // Decide invoice status
+    let invoiceStatus = "PENDING";
 
-    // // Update the invoice
-    const updatedInvoice = await DB.invoice.update({
-        where: {id: invoiceId},
+    if (payment_type === "CASH") {
+        const totalPaid = invoice.payment_history.reduce((sum, ph) => sum + ph.paid_amount, 0) + paid_amount;
+        if (totalPaid === invoice.total_amount) {
+            invoiceStatus = "PAID";
+        } else if (totalPaid > 0) {
+            invoiceStatus = "PARTIALLY_PAID";
+        }
+    } else if (payment_type === "CHEQUE") {
+        // Cheque payments are always PENDING until cleared
+        invoiceStatus = "PENDING";
+    }
+
+    // Create a new payment history entry
+    const newPayment = await DB.payment_History.create({
         data: {
-            paid_amount: updatedPaidAmount,
-            payment_status: {
-                connect: {id: payment_status_id}
-            },
-        },
-        include: {
-            customer: true,
-            invoice_items: {
-                include: {
-                    stock: {
-                        include: {
-                            product: true
+            invoice_id: invoiceId,
+            paid_amount: Number(paid_amount),
+            payment_type,
+            status: payment_type === "CASH" ? "CLEARED" : "PENDING",
+            ...(payment_type === "CHEQUE" && chequeDetail
+                ? {
+                    chequeDetail: {
+                        create: {
+                            cheque_number: chequeDetail.cheque_number,
+                            bank_name: chequeDetail.bank_name,
+                            cheque_date: new Date(chequeDetail.cheque_date),
+                            due_date: chequeDetail.due_date ? new Date(chequeDetail.due_date) : null
                         }
                     }
                 }
-            }
+                : {})
+        },
+        include: {chequeDetail: true}
+    });
+
+    // Update invoice status
+    const updatedInvoice = await DB.invoice.update({
+        where: {id: invoiceId},
+        data: {status: invoiceStatus},
+        include: {
+            invoice_items: true,
+            payment_history: {include: {chequeDetail: true}}
         }
     });
 
     return updatedInvoice;
+};
+
+export const updateChequePayment = async (paymentId, data) => {
+    const {status} = data;
+
+    const validStatuses = ["PENDING", "CLEARED", "REJECTED", "EXPIRED"];
+    const errors = [];
+
+    if (!paymentId) errors.push("Payment ID is required.");
+    if (status && !validStatuses.includes(status)) {
+        errors.push(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
+    }
+    if (errors.length > 0) {
+        const error = new Error("Validation failed");
+        error.errors = errors;
+        throw error;
+    }
+
+    const chequePayment = await DB.cheque_Details.findUnique({
+        where: {payment_id: paymentId}
+    });
+
+    if (!chequePayment) {
+        const error = new Error(`Cheque details not found for Payment ID ${paymentId}`);
+        error.status = 404;
+        throw error;
+    }
+
+    // Update payment history
+    await DB.payment_History.update({
+        where: {id: paymentId},
+        data: {
+            status: status
+        }
+    });
+
+    // Update cheque
+    const updatedCheque = await DB.cheque_Details.update({
+        where: {payment_id: paymentId},
+        data: {
+            status: status
+        }
+    });
+
+    // If status changed to CLEARED, update invoice status too
+    if (status === "CLEARED") {
+        const payment = await DB.payment_History.findUnique({
+            where: {id: paymentId},
+            include: {invoice: true}
+        });
+
+        if (payment) {
+            const invoice = payment.invoice;
+            // Check total cleared cash + cleared cheques
+            const payments = await DB.payment_History.findMany({
+                where: {invoice_id: invoice.id},
+            });
+
+            const totalCleared = payments.reduce((sum, p) => {
+                if (p.payment_type === "CASH" || (p.payment_type === "CHEQUE" && p.status === "CLEARED")) {
+                    return sum + p.paid_amount;
+                }
+                return sum;
+            }, 0);
+
+            let invoiceStatus = "PENDING";
+            if (totalCleared === invoice.total_amount) invoiceStatus = "PAID";
+            else if (totalCleared > 0) invoiceStatus = "PARTIALLY_PAID";
+
+            await DB.invoice.update({
+                where: {id: invoice.id},
+                data: {status: invoiceStatus}
+            });
+        }
+    }
+
+    return updatedCheque;
 };
