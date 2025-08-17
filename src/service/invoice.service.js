@@ -36,7 +36,7 @@ export const getAllInvoices = async (date) => {
     }
 
     const invoices = await DB.invoice.findMany({
-        orderBy: { created_at: "desc" },
+        orderBy: {created_at: "desc"},
         where: whereClause,
         include: {
             customer: true,
@@ -131,13 +131,19 @@ export const createInvoices = async (customerId, data) => {
     if (paid_amount < 0) errors.push("Paid amount cannot be negative.");
     if (total_amount <= 0) errors.push("Total amount must be greater than zero.");
     if (!payment_type) errors.push("Payment type is required.");
-    const validPaymentTypes = ["CASH", "CHEQUE"];
+
+    const validPaymentTypes = ["CASH", "CHEQUE", "PURCHASE_ORDER"];
     if (!validPaymentTypes.includes(payment_type)) {
         errors.push(`Invalid payment type. Must be one of: ${validPaymentTypes.join(", ")}`);
     }
 
     if (payment_type === "CHEQUE" && !chequeDetail) {
         errors.push("Cheque details are required for cheque payments.");
+    }
+
+    // PURCHASE_ORDER should always start with 0
+    if (payment_type === "PURCHASE_ORDER" && paid_amount !== 0) {
+        errors.push("Purchase Order must start with paid amount = 0");
     }
 
     if (errors.length > 0) {
@@ -170,7 +176,8 @@ export const createInvoices = async (customerId, data) => {
             invoiceStatus = "PARTIALLY_PAID";
         }
     } else if (payment_type === "CHEQUE") {
-        // For cheque, always keep pending until cheque is cleared
+        invoiceStatus = "PENDING";
+    } else if (payment_type === "PURCHASE_ORDER") {
         invoiceStatus = "PENDING";
     }
 
@@ -196,7 +203,7 @@ export const createInvoices = async (customerId, data) => {
             },
             payment_history: {
                 create: {
-                    paid_amount: Number(paid_amount),
+                    paid_amount: Number(payment_type === "PURCHASE_ORDER" ? 0 : paid_amount),
                     payment_type: payment_type,
                     status: payment_type === "CASH" ? "CLEARED" : "PENDING",
                     ...(payment_type === "CHEQUE" && chequeDetail
@@ -221,12 +228,12 @@ export const createInvoices = async (customerId, data) => {
     });
 
     // update stock qty
-    // for (const item of items) {
-    //     await DB.stock.update({
-    //         where: { id: item.stock_id },
-    //         data: { qty: { decrement: item.qty } }
-    //     });
-    // }
+    for (const item of items) {
+        await DB.stock.update({
+            where: {id: item.stock_id},
+            data: {qty: {decrement: item.qty}}
+        });
+    }
 
     return invoice;
 };
@@ -414,8 +421,8 @@ export const getPaymentHistoryByInvoiceId = async (invoiceId) => {
     }
 
     const paymentHistory = await DB.payment_History.findMany({
-        where: { invoice_id: invoiceId },
-        include: { chequeDetail: true }
+        where: {invoice_id: invoiceId},
+        include: {chequeDetail: true}
     });
 
     if (!paymentHistory) {

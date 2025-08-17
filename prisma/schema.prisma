@@ -231,6 +231,7 @@ model Cheque_Details {
 enum PaymentType {
   CASH
   CHEQUE
+  PURCHASE_ORDER
 }
 
 enum PaymentStatus {
