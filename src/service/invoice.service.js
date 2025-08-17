@@ -36,12 +36,11 @@ export const getAllInvoices = async (date) => {
     }
 
     const invoices = await DB.invoice.findMany({
-        orderBy: {created_at: "desc"},
+        orderBy: { created_at: "desc" },
         where: whereClause,
         include: {
             customer: true,
-            payment_method: true,
-            payment_status: true,
+            payment_history: true,
             invoice_items: {
                 include: {
                     stock: {
@@ -78,8 +77,7 @@ export const getInvoiceById = async (invoiceId) => {
         where: {id: invoiceId},
         include: {
             customer: true,
-            payment_method: true,
-            payment_status: true,
+            payment_history: true,
             invoice_items: {
                 include: {
                     stock: {
