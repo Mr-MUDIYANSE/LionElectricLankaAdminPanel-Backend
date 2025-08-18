@@ -274,8 +274,17 @@ export const updatedInvoices = async (invoiceId, data) => {
         throw error;
     }
 
-    // Calculate total already paid
-    const totalPaid = invoice.payment_history.reduce((sum, ph) => sum + ph.paid_amount, 0);
+    // Calculate total already paid (ignore rejected or expired cheques)
+    const totalPaid = invoice.payment_history.reduce((sum, ph) => {
+        if (
+            ph.payment_type === "CHEQUE" &&
+            (ph.status === "REJECTED" || ph.status === "EXPIRED")
+        ) {
+            return sum; // skip these
+        }
+        return sum + ph.paid_amount;
+    }, 0);
+
 
     // Prevent overpayment
     if (totalPaid + Number(paid_amount) > invoice.total_amount) {
@@ -289,15 +298,20 @@ export const updatedInvoices = async (invoiceId, data) => {
     let invoiceStatus = "PENDING";
 
     if (payment_type === "CASH") {
-        const totalPaid = invoice.payment_history.reduce((sum, ph) => sum + ph.paid_amount, 0) + paid_amount;
+        const totalPaid = invoice.payment_history.reduce((sum, ph) => {
+            if (ph.payment_type === "CHEQUE" && (ph.status === "REJECTED" || ph.status === "EXPIRED")) {
+                return sum;
+            }
+            return sum + ph.paid_amount;
+        }, 0) + paid_amount;
+
         if (totalPaid === invoice.total_amount) {
             invoiceStatus = "PAID";
         } else if (totalPaid > 0) {
             invoiceStatus = "PARTIALLY_PAID";
         }
     } else if (payment_type === "CHEQUE") {
-        // Cheque payments are always PENDING until cleared
-        invoiceStatus = "PENDING";
+        invoiceStatus = "PENDING"; // always pending until cheque cleared
     }
 
     // Create a new payment history entry
