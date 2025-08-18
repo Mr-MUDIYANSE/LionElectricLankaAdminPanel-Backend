@@ -376,6 +376,13 @@ export const updateChequePayment = async (paymentId, data) => {
         throw error;
     }
 
+    // Check expiry before update
+    if (chequePayment.cheque_date && new Date(chequePayment.cheque_date) < new Date()) {
+        const error = new Error("Cheque has expired. Cannot update this payment.");
+        error.status = 400;
+        throw error;
+    }
+
     let finalStatus = status;
 
     // Auto-expire logic
