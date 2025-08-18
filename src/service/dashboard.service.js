@@ -53,30 +53,33 @@ export const getDashboardDataByRange = async (range) => {
         });
     });
 
-    let profit = 0;
+    let totalProfit = 0;
 
     invoices.forEach(inv => {
-        let invoiceProfit = 0;
+        let invoiceCost = 0;
 
-        // Calculate the total selling price for the items in the invoice
+        // Calculate total cost for each item in the invoice based on unit buying price and quantity
         inv.invoice_items.forEach(item => {
-            const sellingPrice = Number(item.selling_price) || 0;
             const qty = Number(item.qty) || 0;
-            invoiceProfit += sellingPrice * qty;
+
+            // Get the unit buying price for the stock item
+            const unitBuyingPrice = Number(item.stock.unit_buying_price) || 0;
+
+            // Calculate the total cost for this item: Unit Buying Price * Quantity
+            const itemCost = unitBuyingPrice * qty;
+
+            invoiceCost += itemCost;
         });
 
         // Invoice total amount (total amount of the invoice)
         const invoiceTotal = Number(inv.total_amount) || 0;
 
-        // Discount is the difference between the invoice profit (selling price) and total amount
-        const invoiceDiscount = invoiceProfit - invoiceTotal;
+        // Calculate the profit for this invoice: Invoice Total - Invoice Cost
+        const invoiceProfit = invoiceTotal - invoiceCost;
 
-        // Profit = Invoice total - Discount
-        profit += invoiceTotal - invoiceDiscount;
+        totalProfit += invoiceProfit;
 
     });
-
-    const totalProfit = totalRevenue - profit;
 
     // Top Products
     const productSales = {};
