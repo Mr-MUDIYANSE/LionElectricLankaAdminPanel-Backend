@@ -19,9 +19,10 @@ export const getDashboardDataByRange = async (range) => {
 
     // All Invoices in Time Range
     const invoices = await DB.invoice.findMany({
-        where: {created_at: {gte: fromDate}},
+        where: { created_at: { gte: fromDate } },
         include: {
             customer: true,
+            payment_history: true, // Include payment_history to fetch paid_amount
             invoice_items: {
                 include: {
                     stock: {
@@ -57,39 +58,32 @@ export const getDashboardDataByRange = async (range) => {
     invoices.forEach(inv => {
         let invoiceProfit = 0;
 
+        // Calculate the total selling price for the items in the invoice
         inv.invoice_items.forEach(item => {
             const sellingPrice = Number(item.selling_price) || 0;
             const qty = Number(item.qty) || 0;
             invoiceProfit += sellingPrice * qty;
-
-            // console.log("Item - selling price:", sellingPrice);
-            // console.log("Item - quantity:", qty);
         });
 
+        // Invoice total amount (total amount of the invoice)
         const invoiceTotal = Number(inv.total_amount) || 0;
+
+        // Discount is the difference between the invoice profit (selling price) and total amount
         const invoiceDiscount = invoiceProfit - invoiceTotal;
 
+        // Profit = Invoice total - Discount
         profit += invoiceTotal - invoiceDiscount;
 
-        console.log("--------------------------------");
-        console.log("Invoice ID:", inv.id);
-        console.log("Total Selling:", invoiceProfit);
-        console.log("profit:", profit);
-        console.log("Discount:", invoiceDiscount);
-        console.log("Invoice Total Amount:", invoiceTotal);
-        console.log("--------------------------------");
     });
 
     const totalProfit = totalRevenue - profit;
-    console.log("Total Profit:", totalProfit);
-
 
     // Top Products
     const productSales = {};
     invoices.forEach(inv => {
         inv.invoice_items.forEach(item => {
             const title = item.stock.product.title;
-            if (!productSales[title]) productSales[title] = {qty: 0, revenue: 0};
+            if (!productSales[title]) productSales[title] = { qty: 0, revenue: 0 };
             productSales[title].qty += item.qty;
             productSales[title].revenue += item.qty * item.selling_price;
         });
@@ -108,9 +102,14 @@ export const getDashboardDataByRange = async (range) => {
     const customerSales = {};
     invoices.forEach(inv => {
         const customer = inv.customer.name;
-        if (!customerSales[customer]) customerSales[customer] = {orders: 0, total: 0};
+        if (!customerSales[customer]) customerSales[customer] = { orders: 0, total: 0 };
+
+        // Sum up the paid amount from the payment history
+        inv.payment_history.forEach(payment => {
+            customerSales[customer].total += payment.paid_amount || 0;
+        });
+
         customerSales[customer].orders += 1;
-        customerSales[customer].total += inv.paid_amount || 0;
     });
 
     const topCustomers = Object.entries(customerSales)
@@ -125,18 +124,20 @@ export const getDashboardDataByRange = async (range) => {
     // Sales Trend (month-wise aggregation)
     const salesTrend = {};
     invoices.forEach(inv => {
-        const month = inv.created_at.toLocaleString('default', {month: 'short'});
-        if (!salesTrend[month]) salesTrend[month] = 0;
-        salesTrend[month] += inv.paid_amount || 0;
+        const month = inv.created_at.toLocaleString('default', { month: 'short' });
+
+        // Filter payments with status 'CLEARED' only
+        inv.payment_history.forEach(payment => {
+            if (payment.status === 'CLEARED') {
+                if (!salesTrend[month]) salesTrend[month] = 0;
+                salesTrend[month] += payment.paid_amount || 0;
+            }
+        });
     });
 
     const allCustomers = await DB.customer.findMany({
-        where: {
-            status_id: 1
-        },
-        orderBy: {
-            id: 'asc'
-        }
+        where: { status_id: 1 },
+        orderBy: { id: 'asc' },
     });
 
     return {
@@ -148,7 +149,7 @@ export const getDashboardDataByRange = async (range) => {
         salesTrend,
         topProducts,
         topCustomers,
-        allCustomers
+        allCustomers,
     };
-
 };
+
