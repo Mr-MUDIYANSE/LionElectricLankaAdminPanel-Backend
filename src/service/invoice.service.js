@@ -376,11 +376,18 @@ export const updateChequePayment = async (paymentId, data) => {
         throw error;
     }
 
+    let finalStatus = status;
+
+    // Auto-expire logic
+    if (chequePayment.cheque_date && new Date(chequePayment.cheque_date) < new Date()) {
+        finalStatus = "EXPIRED";
+    }
+
     // Update payment history
     await DB.payment_History.update({
         where: {id: paymentId},
         data: {
-            status: status
+            status: finalStatus
         }
     });
 
@@ -388,24 +395,26 @@ export const updateChequePayment = async (paymentId, data) => {
     const updatedCheque = await DB.cheque_Details.update({
         where: {payment_id: paymentId},
         data: {
-            status: status
+            status: finalStatus
         }
     });
 
-    // If status changed to CLEARED, update invoice status too
-    if (status === "CLEARED") {
+    // If cleared, re-check invoice status
+    if (finalStatus === "CLEARED") {
         const payment = await DB.payment_History.findUnique({
-            where: {id: paymentId},
-            include: {invoice: true}
+            where: { id: paymentId },
+            include: { invoice: true },
         });
 
         if (payment) {
             const invoice = payment.invoice;
-            // Check total cleared cash + cleared cheques
+
+            // Get all payments for invoice
             const payments = await DB.payment_History.findMany({
-                where: {invoice_id: invoice.id},
+                where: { invoice_id: invoice.id },
             });
 
+            // Count only valid cleared payments
             const totalCleared = payments.reduce((sum, p) => {
                 if (p.payment_type === "CASH" || (p.payment_type === "CHEQUE" && p.status === "CLEARED")) {
                     return sum + p.paid_amount;
@@ -418,8 +427,8 @@ export const updateChequePayment = async (paymentId, data) => {
             else if (totalCleared > 0) invoiceStatus = "PARTIALLY_PAID";
 
             await DB.invoice.update({
-                where: {id: invoice.id},
-                data: {status: invoiceStatus}
+                where: { id: invoice.id },
+                data: { status: invoiceStatus },
             });
         }
     }

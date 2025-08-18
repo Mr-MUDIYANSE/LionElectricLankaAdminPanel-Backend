@@ -220,7 +220,6 @@ model Cheque_Details {
   cheque_number String        @db.VarChar(50)
   bank_name     String        @db.VarChar(100)
   cheque_date   DateTime
-  due_date      DateTime?
   status        PaymentStatus @default(PENDING)
   created_at    DateTime      @default(now())
   updated_at    DateTime      @updatedAt
