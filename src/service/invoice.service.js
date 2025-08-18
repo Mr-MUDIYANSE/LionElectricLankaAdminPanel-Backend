@@ -40,7 +40,11 @@ export const getAllInvoices = async (date) => {
         where: whereClause,
         include: {
             customer: true,
-            payment_history: true,
+            payment_history: {
+                include: {
+                    chequeDetail: true,
+                }
+            },
             invoice_items: {
                 include: {
                     stock: {
@@ -77,7 +81,11 @@ export const getInvoiceById = async (invoiceId) => {
         where: {id: invoiceId},
         include: {
             customer: true,
-            payment_history: true,
+            payment_history: {
+                include: {
+                    chequeDetail: true,
+                }
+            },
             invoice_items: {
                 include: {
                     stock: {
