@@ -32,6 +32,27 @@ export const getCustomerById = async (id) => {
                         include: {
                             chequeDetail: true,
                         }
+                    },
+                    invoice_items: {
+                        include: {
+                            stock: {
+                                include: {
+                                    status: true,
+                                    product: {
+                                        include: {
+                                            brand: true,
+                                            status: true,
+                                            main_category: true,
+                                            phase: true,
+                                            speed: true,
+                                            motor_type: true,
+                                            size: true,
+                                            gear_box_type: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
