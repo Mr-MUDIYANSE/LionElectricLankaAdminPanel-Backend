@@ -23,10 +23,18 @@ export const getCustomerById = async (id) => {
     }
 
     const customer = await DB.customer.findUnique({
-        where: {id: parseInt(id)},
+        where: { id: parseInt(id) },
         include: {
             status: true,
-            invoices: true
+            invoices: {
+                include: {
+                    payment_history: {
+                        include: {
+                            chequeDetail: true,
+                        }
+                    }
+                }
+            }
         }
     });
 
