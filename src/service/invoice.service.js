@@ -122,6 +122,8 @@ export const getInvoiceById = async (invoiceId) => {
 export const createInvoices = async (customerId, data) => {
     const {total_amount, paid_amount, payment_type, items, chequeDetail} = data;
 
+    console.log(data)
+
     const errors = [];
     if (!customerId || isNaN(customerId)) errors.push("Valid customer ID required.");
 
@@ -221,7 +223,6 @@ export const createInvoices = async (customerId, data) => {
                                     cheque_number: chequeDetail.cheque_number,
                                     bank_name: chequeDetail.bank_name,
                                     cheque_date: new Date(chequeDetail.cheque_date),
-                                    due_date: chequeDetail.due_date ? new Date(chequeDetail.due_date) : null,
                                 }
                             }
                         }
