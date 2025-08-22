@@ -18,8 +18,8 @@ export const getAllQuotation = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -59,7 +59,7 @@ export const getOneQuotation = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Internal Server Error',
-            errors: err.errors || [err.message],
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -101,8 +101,8 @@ export const createQuotation = async (req, res) => {
         if (err.status) {
             return res.status(err.status).json({
                 success: false,
-                message: err.message,
-                errors: err.errors || [],
+                message: "Internal Server Error",
+                errors: "Internal Server Error",
                 data: null
             });
         }
@@ -110,7 +110,7 @@ export const createQuotation = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Internal Server Error',
-            errors: [err.message],
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -159,8 +159,8 @@ export const updateQuotation = async (req, res) => {
     }catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -189,8 +189,8 @@ export const deleteQuotation = async (req, res) => {
     } catch (err) {
         return res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }

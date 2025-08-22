@@ -11,8 +11,8 @@ export const getPaymentMethods = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }

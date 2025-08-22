@@ -16,8 +16,8 @@ export const getAllMainCategory = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -44,8 +44,8 @@ export const getOneMainCategory = async (req, res) => {
     } catch (err) {
         res.status(400).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -62,8 +62,8 @@ export const createMainCategory = async (req, res) => {
     } catch (err) {
         res.status(400).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -90,8 +90,8 @@ export const updateMainCategory = async (req, res) => {
     } catch (err) {
         res.status(400).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -118,8 +118,8 @@ export const deleteMainCategory = async (req, res) => {
     } catch (err) {
         res.status(400).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }

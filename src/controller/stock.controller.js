@@ -27,7 +27,7 @@ export const getAllStock = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Internal Server Error.',
-            errors: err.errors || ['An error occurred while retrieving stock.'],
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -66,7 +66,7 @@ export const getFilterStock = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Internal Server Error.',
-            errors: err.errors || ['An error occurred while retrieving filtered stock.'],
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -105,7 +105,7 @@ export const getFilterStockByVendor = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Internal Server Error.',
-            errors: err.errors || ['An error occurred while retrieving filtered stock.'],
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -168,7 +168,7 @@ export const createStock = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Internal Server Error.',
-            errors: err.errors || ['An error occurred while creating/updating stock.'],
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -225,7 +225,7 @@ export const updateStock = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Internal Server Error.',
-            errors: err.errors || ['An error occurred while updating stock.'],
+            errors: "Internal Server Error",
             data: null
         });
     }

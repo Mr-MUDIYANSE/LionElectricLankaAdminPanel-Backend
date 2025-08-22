@@ -16,8 +16,8 @@ export const getAllGearBoxType = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -44,8 +44,8 @@ export const getOneGearBoxType = async (req, res) => {
     } catch (err) {
         res.status(400).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -62,8 +62,8 @@ export const createGearBoxType = async (req, res) => {
     } catch (err) {
         res.status(400).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -90,8 +90,8 @@ export const updateGearBoxType = async (req, res) => {
     } catch (err) {
         res.status(400).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }

@@ -11,8 +11,8 @@ export const getAll = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -39,8 +39,8 @@ export const getOne = async (req, res) => {
     } catch (err) {
         res.status(400).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -57,8 +57,8 @@ export const create = async (req, res) => {
     } catch (err) {
         res.status(400).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -85,8 +85,8 @@ export const update = async (req, res) => {
     } catch (err) {
         res.status(400).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }

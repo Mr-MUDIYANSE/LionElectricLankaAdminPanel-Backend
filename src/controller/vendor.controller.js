@@ -19,8 +19,8 @@ export const getAll = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -49,8 +49,8 @@ export const getOne = async (req, res) => {
         if (err.message === 'Vendor not found') {
             return res.status(404).json({
                 success: false,
-                message: err.message,
-                errors: err.errors || [],
+                message: "Internal Server Error",
+                errors: "Internal Server Error",
                 data: null
             });
         }
@@ -117,10 +117,10 @@ export const update = async (req, res) => {
                 data: null
             });
         }
-        res.status(400).json({
+        res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -156,8 +156,8 @@ export const remove = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }

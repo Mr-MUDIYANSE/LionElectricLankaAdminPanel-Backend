@@ -17,8 +17,8 @@ export const getAllProducts = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -48,21 +48,21 @@ export const getProductsByCategoryId = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Category not found.',
-                errors: err.errors || [],
+                errors: "Internal Server Error",
                 data: null
             });
         } else if (err.message === 'No products found for this category') {
             return res.status(404).json({
                 success: false,
                 message: 'No products found for the given category.',
-                errors: err.errors || [],
+                errors: "Internal Server Error",
                 data: null
             });
         } else {
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error.',
-                errors: err.errors || [],
+                errors: "Internal Server Error",
                 data: null
             });
         }
@@ -95,21 +95,21 @@ export const filterProducts = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'No products found for the given filters.',
-                errors: err.errors || [],
+                errors: "Internal Server Error",
                 data: null
             });
         } else if (err.message === 'Invalid Category ID') {
             return res.status(400).json({
                 success: false,
                 message: 'Category ID must be a valid number.',
-                errors: err.errors || [],
+                errors: "Internal Server Error",
                 data: null
             });
         } else {
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error.',
-                errors: err.errors || [],
+                errors: "Internal Server Error",
                 data: null
             });
         }
@@ -150,14 +150,14 @@ export const filterProductsByTitle = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'No products found matching the title.',
-                errors: err.errors || [],
+                errors: "Internal Server Error",
                 data: null
             });
         } else {
             return res.status(500).json({
                 success: false,
                 message: 'Internal server error.',
-                errors: err.errors || [],
+                errors: "Internal Server Error",
                 data: null
             });
         }
@@ -198,14 +198,14 @@ export const createNewProduct = async (req, res) => {
             return res.status(409).json({
                 success: false,
                 message: 'Product already exists.',
-                errors: err.errors || [],
+                errors: "Internal Server Error",
                 data: null
             });
         } else if (err.message === 'Invalid category ID.') {
             return res.status(404).json({
                 success: false,
                 message: 'Category not found.',
-                errors: err.errors || [],
+                errors: "Internal Server Error",
                 data: null
             });
         } else if (err.message === 'Validation error') {
@@ -268,8 +268,8 @@ export const updateProduct = async (req, res) => {
     } catch (err) {
         return res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
@@ -297,8 +297,8 @@ export const deleteProduct = async (req, res) => {
     } catch (err) {
         res.status(500).json({
             success: false,
-            message: err.message,
-            errors: err.errors || [],
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
             data: null
         });
     }
