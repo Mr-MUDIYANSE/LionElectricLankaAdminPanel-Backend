@@ -75,7 +75,11 @@ export const getAllInvoices = async (date) => {
 export const getAllMetaData = async () => {
     const invoices = await DB.invoice.findMany({
         include: {
-            payment_history: true,
+            payment_history: {
+                include: {
+                    chequeDetail: true,
+                },
+            },
         },
     });
 
@@ -88,19 +92,28 @@ export const getAllMetaData = async () => {
     invoices.forEach((invoice) => {
         totalAmount += invoice.total_amount;
 
-        const paidForInvoice = invoice.payment_history.reduce(
-            (sum, p) => sum + p.paid_amount,
-            0
-        );
+        // Cleared payments sum
+        const clearedPaid = invoice.payment_history.reduce((sum, p) => {
+            if (p.payment_type === "CASH" && p.status === "CLEARED") {
+                return sum + p.paid_amount;
+            } else if (
+                p.payment_type === "CHEQUE" &&
+                p.chequeDetail &&
+                p.chequeDetail.status === "CLEARED"
+            ) {
+                return sum + p.paid_amount;
+            }
+            return sum;
+        }, 0);
 
-        totalPaidAmount += paidForInvoice;
+        totalPaidAmount += clearedPaid;
 
-        const pendingForInvoice = invoice.total_amount - paidForInvoice;
+        const pendingForInvoice = invoice.total_amount - clearedPaid;
         totalPendingAmount += pendingForInvoice;
 
-        if (invoice.status === "PAID") {
+        if (pendingForInvoice === 0) {
             paidCount++;
-        } else if (invoice.status === "PENDING" || invoice.status === "PARTIALLY_PAID") {
+        } else {
             pendingCount++;
         }
     });
