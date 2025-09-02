@@ -73,14 +73,30 @@ export const getAllInvoices = async (date) => {
 };
 
 export const getAllMetaData = async () => {
-    const invoices = await DB.invoice.findMany();
+    const invoices = await DB.invoice.findMany({
+        include: {
+            payment_history: true,
+        },
+    });
 
     let totalAmount = 0;
+    let totalPaidAmount = 0;
+    let totalPendingAmount = 0;
     let pendingCount = 0;
     let paidCount = 0;
 
     invoices.forEach((invoice) => {
         totalAmount += invoice.total_amount;
+
+        const paidForInvoice = invoice.payment_history.reduce(
+            (sum, p) => sum + p.paid_amount,
+            0
+        );
+
+        totalPaidAmount += paidForInvoice;
+
+        const pendingForInvoice = invoice.total_amount - paidForInvoice;
+        totalPendingAmount += pendingForInvoice;
 
         if (invoice.status === "PAID") {
             paidCount++;
@@ -91,8 +107,10 @@ export const getAllMetaData = async () => {
 
     return {
         total_amount: totalAmount,
-        pending_count: pendingCount,
-        paid_count: paidCount,
+        total_paid_amount: totalPaidAmount,
+        total_pending_amount: totalPendingAmount,
+        pending_invoice_count: pendingCount,
+        paid_invoice_count: paidCount,
     };
 };
 
