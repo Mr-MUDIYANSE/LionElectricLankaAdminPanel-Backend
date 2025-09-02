@@ -1,6 +1,6 @@
 import {
     createInvoices,
-    getAllInvoices,
+    getAllInvoices, getAllMetaData,
     getInvoiceById, getPaymentHistoryByInvoiceId, updateChequePayment,
     updatedInvoices
 } from "../service/invoice.service.js";
@@ -12,6 +12,24 @@ export const getAllInvoice = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'All invoices retrieved',
+            data: invoice
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+            errors: "Internal Server Error",
+            data: null
+        });
+    }
+};
+
+export const getMetaData = async (req, res) => {
+    try {
+        const invoice = await getAllMetaData();
+        res.status(200).json({
+            success: true,
+            message: 'All meta data retrieved',
             data: invoice
         });
     } catch (err) {

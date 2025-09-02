@@ -72,6 +72,30 @@ export const getAllInvoices = async (date) => {
     return invoices;
 };
 
+export const getAllMetaData = async () => {
+    const invoices = await DB.invoice.findMany();
+
+    let totalAmount = 0;
+    let pendingCount = 0;
+    let paidCount = 0;
+
+    invoices.forEach((invoice) => {
+        totalAmount += invoice.total_amount;
+
+        if (invoice.status === "PAID") {
+            paidCount++;
+        } else if (invoice.status === "PENDING" || invoice.status === "PARTIALLY_PAID") {
+            pendingCount++;
+        }
+    });
+
+    return {
+        total_amount: totalAmount,
+        pending_count: pendingCount,
+        paid_count: paidCount,
+    };
+};
+
 export const getInvoiceById = async (invoiceId) => {
     if (!invoiceId) {
         throw new Error("Invalid id required");
@@ -417,8 +441,8 @@ export const updateChequePayment = async (paymentId, data) => {
     // If cleared, re-check invoice status
     if (finalStatus === "CLEARED") {
         const payment = await DB.payment_History.findUnique({
-            where: { id: paymentId },
-            include: { invoice: true },
+            where: {id: paymentId},
+            include: {invoice: true},
         });
 
         if (payment) {
@@ -426,7 +450,7 @@ export const updateChequePayment = async (paymentId, data) => {
 
             // Get all payments for invoice
             const payments = await DB.payment_History.findMany({
-                where: { invoice_id: invoice.id },
+                where: {invoice_id: invoice.id},
             });
 
             // Count only valid cleared payments
@@ -442,8 +466,8 @@ export const updateChequePayment = async (paymentId, data) => {
             else if (totalCleared > 0) invoiceStatus = "PARTIALLY_PAID";
 
             await DB.invoice.update({
-                where: { id: invoice.id },
-                data: { status: invoiceStatus },
+                where: {id: invoice.id},
+                data: {status: invoiceStatus},
             });
         }
     }
