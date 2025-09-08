@@ -26,13 +26,39 @@ export const getAllInvoice = async (req, res) => {
 
 export const getMetaData = async (req, res) => {
     try {
-        const invoice = await getAllMetaData();
-        res.status(200).json({
+        const { date } = req.query;
+        let year, month;
+
+        if (date) {
+            const parts = date.split("-");
+            year = parseInt(parts[0]);
+            if (parts.length === 2) {
+                month = parseInt(parts[1]);
+            } else if (parts.length > 2) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid date format. Use yyyy or yyyy-mm.",
+                    data: null
+                });
+            }
+        }
+
+        const invoiceData = await getAllMetaData();
+
+        const response = {
             success: true,
-            message: 'All meta data retrieved',
-            data: invoice
-        });
+            message: "All meta data retrieved",
+            data: invoiceData.data
+        };
+
+        if (year) {
+            const monthlyData = await getAllMetaData(year, month);
+            response.monthly_data = monthlyData.monthly_data;
+        }
+
+        res.status(200).json(response);
     } catch (err) {
+        console.error(err);
         res.status(500).json({
             success: false,
             message: "Internal Server Error",
