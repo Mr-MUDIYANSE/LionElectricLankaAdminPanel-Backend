@@ -6,23 +6,26 @@ export const getAllInvoices = async (date) => {
     let whereClause = {};
 
     if (date) {
-        // If only year-month provided (e.g., '2025-07')
+        // Year + month (e.g., '2025-07')
         if (/^\d{4}-\d{2}$/.test(date)) {
             const start = new Date(`${date}-01T00:00:00`);
             const end = endOfMonth(start);
-            whereClause.created_at = {
-                gte: start,
-                lte: end
-            };
+            whereClause.created_at = { gte: start, lte: end };
         }
-        // If full date provided (e.g., '2025-07-21')
+        // Year only (e.g., '2025')
+        else if (/^\d{4}$/.test(date)) {
+            const year = parseInt(date);
+            const start = new Date(`${year}-01-01T00:00:00`);
+            const end = new Date(`${year}-12-31T23:59:59`);
+            whereClause.created_at = { gte: start, lte: end };
+        }
+        // Full date (e.g., '2025-07-21')
         else if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
             const dayStart = new Date(`${date}T00:00:00`);
             const dayEnd = new Date(`${date}T23:59:59`);
-            whereClause.created_at = {
-                gte: dayStart,
-                lte: dayEnd
-            };
+            whereClause.created_at = { gte: dayStart, lte: dayEnd };
+        } else {
+            throw new Error("Invalid date format. Use yyyy, yyyy-mm, or yyyy-mm-dd");
         }
     } else {
         // Default: current month
