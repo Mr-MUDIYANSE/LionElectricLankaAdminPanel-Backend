@@ -76,43 +76,30 @@ export const getAllInvoices = async (date) => {
 };
 
 export const getAllMetaData = async (year, month) => {
-
     const invoices = await DB.invoice.findMany({
         include: {
-            payment_history: {
-                include: { chequeDetail: true },
-            },
-        },
+            payment_history: { include: { chequeDetail: true } }
+        }
     });
 
     const calculateMeta = (invoiceList) => {
-        let totalAmount = 0;
-        let totalPaidAmount = 0;
-        let totalPendingAmount = 0;
-        let pendingCount = 0;
-        let paidCount = 0;
+        let totalAmount = 0, totalPaidAmount = 0, totalPendingAmount = 0;
+        let pendingCount = 0, paidCount = 0;
 
-        invoiceList.forEach((invoice) => {
-            totalAmount += invoice.total_amount;
+        invoiceList.forEach((inv) => {
+            totalAmount += inv.total_amount;
 
-            const clearedPaid = invoice.payment_history.reduce((sum, p) => {
-                if (p.payment_type === "CASH" && p.status === "CLEARED") {
-                    return sum + p.paid_amount;
-                } else if (
-                    p.payment_type === "CHEQUE" &&
-                    p.chequeDetail &&
-                    p.chequeDetail.status === "CLEARED"
-                ) {
-                    return sum + p.paid_amount;
-                }
+            const clearedPaid = inv.payment_history.reduce((sum, p) => {
+                if (p.payment_type === "CASH" && p.status === "CLEARED") return sum + p.paid_amount;
+                if (p.payment_type === "CHEQUE" && p.chequeDetail?.status === "CLEARED") return sum + p.paid_amount;
                 return sum;
             }, 0);
 
             totalPaidAmount += clearedPaid;
-            const pendingForInvoice = invoice.total_amount - clearedPaid;
-            totalPendingAmount += pendingForInvoice;
+            const pending = inv.total_amount - clearedPaid;
+            totalPendingAmount += pending;
 
-            if (pendingForInvoice === 0) paidCount++;
+            if (pending === 0) paidCount++;
             else pendingCount++;
         });
 
@@ -121,30 +108,43 @@ export const getAllMetaData = async (year, month) => {
             total_paid_amount: totalPaidAmount,
             total_pending_amount: totalPendingAmount,
             pending_invoice_count: pendingCount,
-            paid_invoice_count: paidCount,
+            paid_invoice_count: paidCount
         };
     };
 
-    // Overall metadata
+    // Overall data
     const overallData = calculateMeta(invoices);
-
-    // Prepare return object
     const result = { data: overallData };
 
-    // If year is provided, calculate monthly_data
+    // Monthly / Yearly data
     if (year) {
         const selectedYear = parseInt(year);
-        const selectedMonth = month ? parseInt(month) : new Date().getMonth() + 1;
+        const selectedMonth = month;
 
-        const monthlyInvoices = invoices.filter((inv) => {
+        const monthlyInvoices = invoices.filter(inv => {
             const invDate = new Date(inv.created_at);
-            return (
-                invDate.getFullYear() === selectedYear &&
-                invDate.getMonth() + 1 === selectedMonth
-            );
+            const invYear = invDate.getFullYear();
+            const invMonth = invDate.getMonth() + 1;
+
+            if (selectedMonth) {
+                return invYear === selectedYear && invMonth === selectedMonth;
+            }
+            return invYear === selectedYear; // year only
         });
 
-        result.monthly_data = calculateMeta(monthlyInvoices);
+        if (monthlyInvoices.length) {
+            result.monthly_data = {
+                ...calculateMeta(monthlyInvoices)
+            };
+        } else {
+            result.monthly_data = {
+                total_amount: 0,
+                total_paid_amount: 0,
+                total_pending_amount: 0,
+                pending_invoice_count: 0,
+                paid_invoice_count: 0
+            };
+        }
     }
 
     return result;

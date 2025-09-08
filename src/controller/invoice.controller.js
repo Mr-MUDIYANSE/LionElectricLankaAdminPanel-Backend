@@ -26,10 +26,15 @@ export const getAllInvoice = async (req, res) => {
 
 export const getMetaData = async (req, res) => {
     try {
-        const { date } = req.query;
+        let {date} = req.query;
         let year, month;
 
+        if (Array.isArray(date)) {
+            date = date[0];
+        }
+
         if (date) {
+            date = String(date).trim();
             const parts = date.split("-");
             year = parseInt(parts[0]);
             if (parts.length === 2) {
@@ -47,16 +52,20 @@ export const getMetaData = async (req, res) => {
             month = now.getMonth() + 1;
         }
 
-        const invoiceData = await getAllMetaData();
+        // Overall data
+        const overallData = await getAllMetaData();
+
+        // Monthly / yearly data
+        const monthlyData = await getAllMetaData(year, month);
 
         const response = {
             success: true,
             message: "All meta data retrieved",
-            data: invoiceData.data
+            data: {
+                overall_data: overallData.data,
+                monthly_data: monthlyData.monthly_data
+            }
         };
-
-        const monthlyData = await getAllMetaData(year, month);
-        response.monthly_data = monthlyData.monthly_data;
 
         res.status(200).json(response);
     } catch (err) {
