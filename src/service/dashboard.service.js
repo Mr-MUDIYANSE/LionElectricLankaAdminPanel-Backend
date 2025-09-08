@@ -126,16 +126,23 @@ export const getDashboardDataByRange = async (range) => {
 
     // Sales Trend (month-wise aggregation)
     const salesTrend = {};
-    invoices.forEach(inv => {
-        const month = inv.created_at.toLocaleString('default', { month: 'short' });
 
-        // Filter payments with status 'CLEARED' only
-        inv.payment_history.forEach(payment => {
-            if (payment.status === 'CLEARED') {
-                if (!salesTrend[month]) salesTrend[month] = 0;
-                salesTrend[month] += payment.paid_amount || 0;
+    invoices.forEach(inv => {
+        const month = new Date(inv.created_at).toLocaleString('default', { month: 'short', year: 'numeric' });
+
+        // Sum only CLEARED payments (cash & cheque)
+        const clearedPaid = inv.payment_history.reduce((sum, p) => {
+            if (p.payment_type === "CASH" && p.status === "CLEARED") {
+                return sum + (p.paid_amount || 0);
             }
-        });
+            if (p.payment_type === "CHEQUE" && p.chequeDetail?.status === "CLEARED") {
+                return sum + (p.paid_amount || 0);
+            }
+            return sum;
+        }, 0);
+
+        if (!salesTrend[month]) salesTrend[month] = 0;
+        salesTrend[month] += clearedPaid;
     });
 
     const allCustomers = await DB.customer.findMany({
