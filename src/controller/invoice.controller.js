@@ -41,6 +41,10 @@ export const getMetaData = async (req, res) => {
                     data: null
                 });
             }
+        } else {
+            const now = new Date();
+            year = now.getFullYear();
+            month = now.getMonth() + 1;
         }
 
         const invoiceData = await getAllMetaData();
@@ -51,10 +55,8 @@ export const getMetaData = async (req, res) => {
             data: invoiceData.data
         };
 
-        if (year) {
-            const monthlyData = await getAllMetaData(year, month);
-            response.monthly_data = monthlyData.monthly_data;
-        }
+        const monthlyData = await getAllMetaData(year, month);
+        response.monthly_data = monthlyData.monthly_data;
 
         res.status(200).json(response);
     } catch (err) {
