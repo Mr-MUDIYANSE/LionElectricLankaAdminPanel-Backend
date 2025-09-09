@@ -19,7 +19,7 @@ export const getDashboardDataByRange = async (range) => {
 
     // All Invoices in Time Range
     const invoices = await DB.invoice.findMany({
-        where: { created_at: { gte: fromDate } },
+        where: {created_at: {gte: fromDate}},
         include: {
             customer: true,
             payment_history: true, // Include payment_history to fetch paid_amount
@@ -86,7 +86,7 @@ export const getDashboardDataByRange = async (range) => {
     invoices.forEach(inv => {
         inv.invoice_items.forEach(item => {
             const title = item.stock.product.title;
-            if (!productSales[title]) productSales[title] = { qty: 0, revenue: 0 };
+            if (!productSales[title]) productSales[title] = {qty: 0, revenue: 0};
             productSales[title].qty += item.qty;
             productSales[title].revenue += item.qty * item.selling_price;
         });
@@ -105,11 +105,13 @@ export const getDashboardDataByRange = async (range) => {
     const customerSales = {};
     invoices.forEach(inv => {
         const customer = inv.customer.name;
-        if (!customerSales[customer]) customerSales[customer] = { orders: 0, total: 0 };
+        if (!customerSales[customer]) customerSales[customer] = {orders: 0, total: 0};
 
-        // Sum up the paid amount from the payment history
+        // Only include payments that are not REJECTED or EXPIRED
         inv.payment_history.forEach(payment => {
-            customerSales[customer].total += payment.paid_amount || 0;
+            if (payment.status !== 'REJECTED' && payment.status !== 'EXPIRED') {
+                customerSales[customer].total += payment.paid_amount || 0;
+            }
         });
 
         customerSales[customer].orders += 1;
@@ -124,30 +126,24 @@ export const getDashboardDataByRange = async (range) => {
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
-    // Sales Trend (month-wise aggregation)
+// Sales Trend (month-wise aggregation)
     const salesTrend = {};
-
     invoices.forEach(inv => {
-        const month = new Date(inv.created_at).toLocaleString('default', { month: 'short', year: 'numeric' });
+        const month = inv.created_at.toLocaleString('default', {month: 'short'});
 
-        // Sum only CLEARED payments (cash & cheque)
-        const clearedPaid = inv.payment_history.reduce((sum, p) => {
-            if (p.payment_type === "CASH" && p.status === "CLEARED") {
-                return sum + (p.paid_amount || 0);
+        inv.payment_history.forEach(payment => {
+            // Include only CLEARED payments (exclude REJECTED & EXPIRED automatically)
+            if (payment.status === 'CLEARED' || payment.status === 'PENDING') {
+                if (!salesTrend[month]) salesTrend[month] = 0;
+                salesTrend[month] += payment.paid_amount || 0;
             }
-            if (p.payment_type === "CHEQUE" && p.chequeDetail?.status === "CLEARED") {
-                return sum + (p.paid_amount || 0);
-            }
-            return sum;
-        }, 0);
-
-        if (!salesTrend[month]) salesTrend[month] = 0;
-        salesTrend[month] += clearedPaid;
+        });
     });
 
+
     const allCustomers = await DB.customer.findMany({
-        where: { status_id: 1 },
-        orderBy: { id: 'asc' },
+        where: {status_id: 1},
+        orderBy: {id: 'asc'},
     });
 
     return {
