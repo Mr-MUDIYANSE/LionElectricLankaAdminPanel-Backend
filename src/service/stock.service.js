@@ -217,6 +217,7 @@ export const createStocks = async (productId, vendorId, data) => {
 };
 
 export const updateStocks = async (stockId, data) => {
+    console.log(data);
     if (!stockId || isNaN(stockId)) {
         const error = new Error('Stock id required.');
         error.status = 400;
@@ -224,9 +225,9 @@ export const updateStocks = async (stockId, data) => {
     }
 
     const stockUpdateData = {};
-    if (data.unit_buying_price) stockUpdateData.unit_buying_price = data.unit_buying_price;
-    if (data.unit_selling_price) stockUpdateData.unit_selling_price = data.unit_selling_price;
-    if (data.qty) stockUpdateData.qty = data.qty;
+    if (data.unit_buying_price !== undefined) stockUpdateData.unit_buying_price = data.unit_buying_price;
+    if (data.unit_selling_price !== undefined) stockUpdateData.unit_selling_price = data.unit_selling_price;
+    if (data.qty !== undefined) stockUpdateData.qty = data.qty;
 
     if (Object.keys(stockUpdateData).length > 0) {
         const stock = await DB.stock.findUnique({

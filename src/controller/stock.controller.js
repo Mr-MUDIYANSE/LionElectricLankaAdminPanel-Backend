@@ -214,6 +214,7 @@ export const updateStock = async (req, res) => {
             data: updatedStock
         });
     } catch (err) {
+        console.log(err)
         if (err.errors) {
             return res.status(400).json({
                 success: false,
