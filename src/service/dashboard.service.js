@@ -85,23 +85,45 @@ export const getDashboardDataByRange = async (range) => {
         .sort((a, b) => b.qty - a.qty)
         .slice(0, 5);
 
-    // Top Customers
     const customerSales = {};
-    invoices.forEach(inv => {
-        const customer = inv.customer.name;
-        if (!customerSales[customer]) customerSales[customer] = { orders: 0, total: 0 };
 
-        inv.payment_history.forEach(payment => {
-            if (payment.status !== "REJECTED" && payment.status !== "EXPIRED") {
-                customerSales[customer].total += payment.paid_amount || 0;
+    invoices.forEach(inv => {
+        const custName = inv.customer?.name || "Unknown";
+
+        if (!customerSales[custName]) {
+            customerSales[custName] = {
+                orders: 0,
+                total: 0,
+                paid_total: 0,
+                pending_total: 0
+            };
+        }
+
+        customerSales[custName].orders += 1;
+
+        // full invoice price (paid + pending)
+        customerSales[custName].total += inv.total_amount || 0;
+
+        // sum payments
+        let paid = 0;
+        inv.payment_history.forEach(p => {
+            if (p.status === "CLEARED") {
+                paid += p.paid_amount || 0;
             }
         });
 
-        customerSales[customer].orders += 1;
+        customerSales[custName].paid_total += paid;
+        customerSales[custName].pending_total += (inv.total_amount || 0) - paid;
     });
 
     const topCustomers = Object.entries(customerSales)
-        .map(([name, data]) => ({ name, orders: data.orders, total: data.total }))
+        .map(([name, data]) => ({
+            name,
+            orders: data.orders,
+            total: data.total,              // full invoice total
+            paid_total: data.paid_total,    // cleared only
+            pending_total: data.pending_total
+        }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
