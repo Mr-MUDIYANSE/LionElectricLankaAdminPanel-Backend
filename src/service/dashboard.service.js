@@ -126,20 +126,46 @@ export const getDashboardDataByRange = async (range) => {
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
-// Sales Trend (month-wise aggregation)
-    const salesTrend = {};
+// Monthly Aggregation
+    const monthlyData = {};
+
     invoices.forEach(inv => {
         const month = inv.created_at.toLocaleString('default', {month: 'short'});
 
+        if (!monthlyData[month]) {
+            monthlyData[month] = {
+                total_amount: 0,
+                total_paid_amount: 0,
+                total_pending_amount: 0,
+                pending_invoice_count: 0,
+                paid_invoice_count: 0,
+            };
+        }
+
+        // Add invoice total
+        monthlyData[month].total_amount += inv.total_amount || 0;
+
+        // Add payments (CLEARED + PENDING only, ignore REJECTED & EXPIRED)
+        let invoicePaid = 0;
         inv.payment_history.forEach(payment => {
-            // Include only CLEARED payments (exclude REJECTED & EXPIRED automatically)
             if (payment.status === 'CLEARED' || payment.status === 'PENDING') {
-                if (!salesTrend[month]) salesTrend[month] = 0;
-                salesTrend[month] += payment.paid_amount || 0;
+                invoicePaid += payment.paid_amount || 0;
             }
         });
-    });
 
+        monthlyData[month].total_paid_amount += invoicePaid;
+
+        // Calculate pending for this invoice
+        const invoicePending = (inv.total_amount || 0) - invoicePaid;
+        monthlyData[month].total_pending_amount += invoicePending > 0 ? invoicePending : 0;
+
+        // Invoice status counts
+        if (inv.status === 'PAID') {
+            monthlyData[month].paid_invoice_count += 1;
+        } else {
+            monthlyData[month].pending_invoice_count += 1;
+        }
+    });
 
     const allCustomers = await DB.customer.findMany({
         where: {status_id: 1},
@@ -152,7 +178,7 @@ export const getDashboardDataByRange = async (range) => {
         totalOrders,
         avgOrderValue,
         categorySales,
-        salesTrend,
+        salesTrend: monthlyData,
         topProducts,
         topCustomers,
         allCustomers,
