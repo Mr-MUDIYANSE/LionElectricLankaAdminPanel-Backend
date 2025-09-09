@@ -1,9 +1,9 @@
 import {getDashboardDataByRange} from "../service/dashboard.service.js";
 
 export const getDashboardData = async (req, res) => {
-    const range = req?.query?.dateRange || '30d';
+    const date = req?.query?.date;
     try {
-        const size = await getDashboardDataByRange(range);
+        const size = await getDashboardDataByRange(date);
         res.status(200).json({
             success: true,
             message: 'All dashboard data retrieved',

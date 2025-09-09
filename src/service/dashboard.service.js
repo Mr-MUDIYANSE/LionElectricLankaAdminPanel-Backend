@@ -1,28 +1,32 @@
 import DB from "../db/db.js";
 
-const getDateRange = (range) => {
-    const now = new Date();
-    switch (range) {
-        case '60d':
-            return new Date(now.setDate(now.getDate() - 60));
-        case '90d':
-            return new Date(now.setDate(now.getDate() - 90));
-        case '1y':
-            return new Date(now.setFullYear(now.getFullYear() - 1));
-        default:
-            return new Date(now.setDate(now.getDate() - 30));
-    }
-};
-
 export const getDashboardDataByRange = async (range) => {
-    const fromDate = getDateRange(range);
+    const now = new Date();
+    let fromDate, toDate;
+
+    if (/^\d{4}$/.test(range)) {
+        // Range is a year like "2024"
+        const year = parseInt(range, 10);
+        fromDate = new Date(year, 0, 1);   // Jan 1 of that year
+        toDate = new Date(year, 11, 31, 23, 59, 59, 999); // Dec 31 of that year
+    } else {
+        // Default: current year
+        const currentYear = now.getFullYear();
+        fromDate = new Date(currentYear, 0, 1);
+        toDate = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+    }
 
     // All Invoices in Time Range
     const invoices = await DB.invoice.findMany({
-        where: {created_at: {gte: fromDate}},
+        where: {
+            created_at: {
+                gte: fromDate,
+                lte: toDate,
+            },
+        },
         include: {
             customer: true,
-            payment_history: true, // Include payment_history to fetch paid_amount
+            payment_history: true,
             invoice_items: {
                 include: {
                     stock: {
@@ -30,7 +34,7 @@ export const getDashboardDataByRange = async (range) => {
                             product: {
                                 include: {
                                     main_category: true,
-                                }
+                                },
                             },
                         },
                     },
@@ -53,32 +57,16 @@ export const getDashboardDataByRange = async (range) => {
         });
     });
 
+    // Profit Calculation
     let totalProfit = 0;
-
     invoices.forEach(inv => {
         let invoiceCost = 0;
-
-        // Calculate total cost for each item in the invoice based on unit buying price and quantity
         inv.invoice_items.forEach(item => {
             const qty = Number(item.qty) || 0;
-
-            // Get the unit buying price for the stock item
             const unitBuyingPrice = Number(item.stock.unit_buying_price) || 0;
-
-            // Calculate the total cost for this item: Unit Buying Price * Quantity
-            const itemCost = unitBuyingPrice * qty;
-
-            invoiceCost += itemCost;
+            invoiceCost += unitBuyingPrice * qty;
         });
-
-        // Invoice total amount (total amount of the invoice)
-        const invoiceTotal = Number(inv.total_amount) || 0;
-
-        // Calculate the profit for this invoice: Invoice Total - Invoice Cost
-        const invoiceProfit = invoiceTotal - invoiceCost;
-
-        totalProfit += invoiceProfit;
-
+        totalProfit += (Number(inv.total_amount) || 0) - invoiceCost;
     });
 
     // Top Products
@@ -86,18 +74,14 @@ export const getDashboardDataByRange = async (range) => {
     invoices.forEach(inv => {
         inv.invoice_items.forEach(item => {
             const title = item.stock.product.title;
-            if (!productSales[title]) productSales[title] = {qty: 0, revenue: 0};
+            if (!productSales[title]) productSales[title] = { qty: 0, revenue: 0 };
             productSales[title].qty += item.qty;
             productSales[title].revenue += item.qty * item.selling_price;
         });
     });
 
     const topProducts = Object.entries(productSales)
-        .map(([title, data]) => ({
-            title,
-            qty: data.qty,
-            revenue: data.revenue,
-        }))
+        .map(([title, data]) => ({ title, qty: data.qty, revenue: data.revenue }))
         .sort((a, b) => b.qty - a.qty)
         .slice(0, 5);
 
@@ -105,11 +89,10 @@ export const getDashboardDataByRange = async (range) => {
     const customerSales = {};
     invoices.forEach(inv => {
         const customer = inv.customer.name;
-        if (!customerSales[customer]) customerSales[customer] = {orders: 0, total: 0};
+        if (!customerSales[customer]) customerSales[customer] = { orders: 0, total: 0 };
 
-        // Only include payments that are not REJECTED or EXPIRED
         inv.payment_history.forEach(payment => {
-            if (payment.status !== 'REJECTED' && payment.status !== 'EXPIRED') {
+            if (payment.status !== "REJECTED" && payment.status !== "EXPIRED") {
                 customerSales[customer].total += payment.paid_amount || 0;
             }
         });
@@ -118,19 +101,14 @@ export const getDashboardDataByRange = async (range) => {
     });
 
     const topCustomers = Object.entries(customerSales)
-        .map(([name, data]) => ({
-            name,
-            orders: data.orders,
-            total: data.total,
-        }))
+        .map(([name, data]) => ({ name, orders: data.orders, total: data.total }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
-// Monthly Aggregation
+    // Monthly Aggregation
     const monthlyData = {};
-
     invoices.forEach(inv => {
-        const month = inv.created_at.toLocaleString('default', {month: 'short'});
+        const month = inv.created_at.toLocaleString("default", { month: "short" });
 
         if (!monthlyData[month]) {
             monthlyData[month] = {
@@ -142,35 +120,30 @@ export const getDashboardDataByRange = async (range) => {
             };
         }
 
-        // Add invoice total
         monthlyData[month].total_amount += inv.total_amount || 0;
 
-        // Add payments (CLEARED + PENDING only, ignore REJECTED & EXPIRED)
         let invoicePaid = 0;
         inv.payment_history.forEach(payment => {
-            if (payment.status === 'CLEARED' || payment.status === 'PENDING') {
+            if (payment.status === "CLEARED" || payment.status === "PENDING") {
                 invoicePaid += payment.paid_amount || 0;
             }
         });
 
         monthlyData[month].total_paid_amount += invoicePaid;
 
-        // Calculate pending for this invoice
         const invoicePending = (inv.total_amount || 0) - invoicePaid;
         monthlyData[month].total_pending_amount += invoicePending > 0 ? invoicePending : 0;
 
-        // Invoice status counts
-        if (inv.status === 'PAID') {
+        if (inv.status === "PAID") {
             monthlyData[month].paid_invoice_count += 1;
         } else {
             monthlyData[month].pending_invoice_count += 1;
         }
     });
 
-    const allCustomers = await DB.customer.findMany({
-        where: {status_id: 1},
-        orderBy: {id: 'asc'},
-    });
+    const allCustomers = await DB.customer.findMany();
+
+    const customerCount = allCustomers.length;
 
     return {
         totalRevenue,
@@ -181,7 +154,6 @@ export const getDashboardDataByRange = async (range) => {
         salesTrend: monthlyData,
         topProducts,
         topCustomers,
-        allCustomers,
+        allCustomersCount: customerCount,
     };
 };
-
