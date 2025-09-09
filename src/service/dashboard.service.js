@@ -121,8 +121,6 @@ export const getDashboardDataByRange = async (range) => {
             name,
             orders: data.orders,
             total: data.total,              // full invoice total
-            paid_total: data.paid_total,    // cleared only
-            pending_total: data.pending_total
         }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
