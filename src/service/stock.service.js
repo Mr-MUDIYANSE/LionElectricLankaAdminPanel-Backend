@@ -217,7 +217,6 @@ export const createStocks = async (productId, vendorId, data) => {
 };
 
 export const updateStocks = async (stockId, data) => {
-    console.log(data);
     if (!stockId || isNaN(stockId)) {
         const error = new Error('Stock id required.');
         error.status = 400;
