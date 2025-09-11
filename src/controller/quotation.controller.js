@@ -97,23 +97,23 @@ export const createQuotation = async (req, res) => {
             data: response
         });
     } catch (err) {
-        // Check if custom error message or unexpected error
         if (err.status) {
             return res.status(err.status).json({
                 success: false,
-                message: "Internal Server Error",
-                errors: "Internal Server Error",
+                message: err.message || 'Request failed.',
+                errors: err.errors || [err.message],
                 data: null
             });
         }
-        // For unknown errors
+
         return res.status(500).json({
             success: false,
             message: 'Internal Server Error',
-            errors: "Internal Server Error",
+            errors: [err.message || "Unknown error occurred"],
             data: null
         });
     }
+
 };
 
 export const updateQuotation = async (req, res) => {
@@ -123,7 +123,7 @@ export const updateQuotation = async (req, res) => {
     if (!quotationId) {
         return res.status(400).json({
             success: false,
-            message: 'Quotation or missing id parameter.',
+            message: 'Quotation id is missing.',
             errors: ['Quotation id must be a number.'],
             data: null
         });
@@ -141,30 +141,33 @@ export const updateQuotation = async (req, res) => {
     try {
         const response = await updatedQuotations(quotationId, data);
 
-        if (!quotation) {
-            return res.status(404).json({
-                success: false,
-                message: 'Quotation not found.',
-                errors: ['No quotation found with the given ID.'],
-                data: null
-            });
-        }
-
         return res.status(200).json({
             success: true,
             message: 'Quotation updated successfully.',
             data: response
         });
 
-    }catch (err) {
+    } catch (err) {
+        console.error(err);
+
+        // Handle "not found" case from updatedQuotations
+        if (err.status === 404) {
+            return res.status(404).json({
+                success: false,
+                message: err.message,
+                errors: [err.message],
+                data: null
+            });
+        }
+
         res.status(500).json({
             success: false,
             message: "Internal Server Error",
-            errors: "Internal Server Error",
+            errors: [err.message || "Internal Server Error"],
             data: null
         });
     }
-}
+};
 
 export const deleteQuotation = async (req, res) => {
     const quotationId = req.params.id;

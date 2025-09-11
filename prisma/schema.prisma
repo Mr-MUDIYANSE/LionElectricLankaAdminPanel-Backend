@@ -249,6 +249,7 @@ enum InvoiceStatus {
 model Quotation {
   id              String           @id @unique
   total_amount    Float?
+  description     String?          @db.Text
   expires_at      DateTime
   created_at      DateTime         @default(now())
   updated_at      DateTime         @updatedAt

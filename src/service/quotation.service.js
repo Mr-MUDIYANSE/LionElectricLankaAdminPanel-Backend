@@ -115,7 +115,7 @@ export const getQuotationById = async (quotationId) => {
 };
 
 export const createQuotations = async (customerId, data) => {
-    const {total_amount, items} = data;
+    const {total_amount, description, items} = data;
 
     const errors = [];
     if (!customerId || isNaN(customerId)) errors.push("Valid customer ID required.");
@@ -154,20 +154,29 @@ export const createQuotations = async (customerId, data) => {
         });
 
         if (!stock) {
-            throw new Error(`Stock ID ${item.stock_id} not found`);
+            const error = new Error(`Stock ID ${item.stock_id} not found`);
+            error.status = 404;
+            error.errors = [`Stock with ID ${item.stock_id} does not exist.`];
+            throw error;
         }
 
         if (stock.qty < item.qty) {
-            throw new Error(
+            const error = new Error(
                 `Insufficient stock for product "${stock.product.title}". Available: ${stock.qty}, Required: ${item.qty}`
             );
+            error.status = 400;
+            error.errors = [
+                `Insufficient stock for product "${stock.product.title}". Available: ${stock.qty}, Required: ${item.qty}`
+            ];
+            throw error;
         }
+
     }
 
     const uppercaseLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
     // Generate a unique quotation ID
-    let uniqueId = cryptoRandomString({ length: 15, characters: uppercaseLetters });
+    let uniqueId = cryptoRandomString({length: 15, characters: uppercaseLetters});
 
     // Check if the generated ID already exists
     let existingQuotation = await DB.quotation.findUnique({
@@ -176,7 +185,7 @@ export const createQuotations = async (customerId, data) => {
 
     // If the ID exists, regenerate until a unique one is found
     while (existingQuotation) {
-        uniqueId = cryptoRandomString({ length: 15, characters: uppercaseLetters });
+        uniqueId = cryptoRandomString({length: 15, characters: uppercaseLetters});
         existingQuotation = await DB.quotation.findUnique({
             where: {id: uniqueId}
         });
@@ -190,6 +199,7 @@ export const createQuotations = async (customerId, data) => {
         data: {
             id: uniqueId,
             total_amount: Number(total_amount),
+            description: description?.trim() ? description : null,
             expires_at: expiresAt,
             customer_id: Number(customerId),
             status_id: 1,
@@ -212,12 +222,10 @@ export const createQuotations = async (customerId, data) => {
 };
 
 export const updatedQuotations = async (quotationId, data) => {
-    const {total_amount} = data;
-    console.log(quotationId)
+    const {total_amount, description} = data;
     const errors = [];
     if (!quotationId) errors.push("Quotation id is required.");
     if (!data) errors.push("Data is required to update.");
-    if (total_amount == null || isNaN(total_amount)) errors.push("Valid total amount is required.");
 
     if (errors.length > 0) {
         const error = new Error("Validation failed");
@@ -239,11 +247,15 @@ export const updatedQuotations = async (quotationId, data) => {
         throw error;
     }
 
+    const updateData = {};
+    if (total_amount !== undefined) updateData.total_amount = Number(total_amount);
+    if (description !== undefined) {
+        updateData.description = description?.trim() ? description : null;
+    }
+
     const updatedQuotation = await DB.quotation.update({
         where: {id: quotationId},
-        data: {
-            total_amount: total_amount,
-        },
+        data: updateData,
         include: {
             customer: true,
             quotation_items: {
