@@ -2,7 +2,7 @@ import {Router} from "express";
 import {
     createInvoice,
     getAllInvoice, getMetaData,
-    getOneInvoice, getPaymentHistory,
+    getOneInvoice, getPaymentHistory, returnProduct,
     updateCheque,
     updateInvoice
 } from "../controller/invoice.controller.js";
@@ -16,5 +16,6 @@ invoiceRouter.get('/get/meta-data', getMetaData);
 invoiceRouter.post('/create/customer/:id', createInvoice);
 invoiceRouter.patch('/update/:id', updateInvoice);
 invoiceRouter.patch('/update/cheque/payment-history/:id', updateCheque);
+invoiceRouter.post('/returns', returnProduct);
 
 export default invoiceRouter;

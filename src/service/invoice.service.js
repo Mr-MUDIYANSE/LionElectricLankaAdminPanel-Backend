@@ -10,20 +10,20 @@ export const getAllInvoices = async (date) => {
         if (/^\d{4}-\d{2}$/.test(date)) {
             const start = new Date(`${date}-01T00:00:00`);
             const end = endOfMonth(start);
-            whereClause.created_at = { gte: start, lte: end };
+            whereClause.created_at = {gte: start, lte: end};
         }
         // Year only (e.g., '2025')
         else if (/^\d{4}$/.test(date)) {
             const year = parseInt(date);
             const start = new Date(`${year}-01-01T00:00:00`);
             const end = new Date(`${year}-12-31T23:59:59`);
-            whereClause.created_at = { gte: start, lte: end };
+            whereClause.created_at = {gte: start, lte: end};
         }
         // Full date (e.g., '2025-07-21')
         else if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
             const dayStart = new Date(`${date}T00:00:00`);
             const dayEnd = new Date(`${date}T23:59:59`);
-            whereClause.created_at = { gte: dayStart, lte: dayEnd };
+            whereClause.created_at = {gte: dayStart, lte: dayEnd};
         } else {
             throw new Error("Invalid date format. Use yyyy, yyyy-mm, or yyyy-mm-dd");
         }
@@ -78,7 +78,7 @@ export const getAllInvoices = async (date) => {
 export const getAllMetaData = async (year, month) => {
     const invoices = await DB.invoice.findMany({
         include: {
-            payment_history: { include: { chequeDetail: true } }
+            payment_history: {include: {chequeDetail: true}}
         }
     });
 
@@ -114,7 +114,7 @@ export const getAllMetaData = async (year, month) => {
 
     // Overall data
     const overallData = calculateMeta(invoices);
-    const result = { data: overallData };
+    const result = {data: overallData};
 
     // Monthly / Yearly data
     if (year) {
@@ -286,6 +286,7 @@ export const createInvoices = async (customerId, data) => {
                 create: items.map((item) => ({
                     qty: item.qty,
                     selling_price: item.selling_price,
+                    discount_amount: item.discount_amount,
                     stock: {connect: {id: item.stock_id}}
                 }))
             },
@@ -548,4 +549,150 @@ export const getPaymentHistoryByInvoiceId = async (invoiceId) => {
     }
 
     return paymentHistory;
+};
+
+export const createProductReturn = async (data) => {
+    const {invoice_id, product_id, return_qty, reason} = data;
+
+    if (!invoice_id) {
+        throw new Error("Invoice ID is required.");
+    }
+    if (!product_id) {
+        throw new Error("Product ID is required.");
+    }
+    if (!return_qty) {
+        throw new Error("Return Quantity is required.");
+    }
+
+    // Fetch the invoice with payment history and invoice items
+    const invoice = await DB.invoice.findUnique({
+        where: {id: invoice_id},
+        include: {
+            invoice_items: {
+                include: {
+                    stock: {
+                        include: {
+                            product: true
+                        }
+                    }
+                }
+            },
+            payment_history: true
+        }
+    });
+
+    if (!invoice) {
+        throw new Error("Invoice not found.");
+    }
+
+    const currentDate = new Date();
+    const invoiceDate = new Date(invoice.created_at);
+    const diffTime = Math.abs(currentDate - invoiceDate); // Difference in milliseconds
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert ms to days
+
+    if (diffDays > 14) {
+        throw new Error("Product return period has expired. Returns are only allowed within 14 days of the invoice creation.");
+    }
+
+    const invoiceItem = invoice.invoice_items.find(item => item.stock && item.stock.product && item.stock.product.id === product_id);
+
+    if (!invoiceItem) {
+        throw new Error("Product not found in the invoice.");
+    }
+
+    if (return_qty > invoiceItem.qty - invoiceItem.returned_qty) {
+        throw new Error("Return quantity cannot exceed purchased quantity.");
+    }
+
+    const refundAmount = ((invoiceItem.selling_price * return_qty) - (invoiceItem.discount_amount / invoiceItem.qty) * return_qty);
+
+    // Create the product return record
+    const productReturn = await DB.product_Return.create({
+        data: {
+            invoice_id,
+            product_id,
+            return_qty,
+            reason,
+            return_item: {
+                create: [{
+                    returned_qty: return_qty,
+                    selling_price: invoiceItem.selling_price,
+                    discount_amount: (invoiceItem.discount_amount / invoiceItem.qty) * return_qty
+                }]
+            }
+        }
+    });
+
+    // Update the returned quantity for the invoice item
+    await DB.invoice_Item.update({
+        where: {id: invoiceItem.id},
+        data: {returned_qty: {increment: return_qty}}
+    });
+
+    // Find the stock item based on the product_id and get its ID
+    const stock = await DB.stock.findFirst({
+        where: {
+            product_id: product_id
+        }
+    });
+
+    if (!stock) {
+        throw new Error("Stock for the product not found.");
+    }
+
+    // Restock the returned item in stock
+    await DB.stock.update({
+        where: {id: stock.id},  // Use stock ID here
+        data: {qty: {increment: return_qty}}
+    });
+
+    // Add payment history with negative amount for the refund
+    await DB.payment_History.create({
+        data: {
+            paid_amount: -refundAmount,  // Negative amount for the refund
+            payment_type: 'CASH',
+            status: 'RETURN',
+            invoice: {
+                connect: { id: invoice.id }  // Properly connect the invoice using its ID
+            }
+        }
+    });
+
+    // Handle Invoice Status Update
+    let updatedStatus = invoice.status;
+
+    // If payment history is empty, initialize it as an empty array
+    const paymentHistory = invoice.payment_history || [];
+
+    const totalPaid = paymentHistory.reduce((sum, ph) => sum + ph.paid_amount, 0);
+    const newPaidAmount = totalPaid - refundAmount;
+
+    // Handle status updates based on the payment status
+    if (updatedStatus === 'PENDING') {
+        // If the invoice is PENDING and the return happens, it stays PENDING
+        // We could also mark it as "RETURNED" if you have such status (optional)
+    } else if (updatedStatus === 'PARTIALLY_PAID') {
+        if (newPaidAmount === invoice.total_amount) {
+            updatedStatus = 'PAID';
+        } else {
+            updatedStatus = 'PARTIALLY_PAID';
+        }
+    } else if (updatedStatus === 'PAID') {
+        if (newPaidAmount < invoice.total_amount) {
+            updatedStatus = 'PARTIALLY_PAID';
+        } else if (newPaidAmount === 0) {
+            updatedStatus = 'PENDING';
+        }
+    }
+
+    // Update the invoice status after the return
+    await DB.invoice.update({
+        where: {id: invoice_id},
+        data: {status: updatedStatus}
+    });
+
+    return {
+        productReturn,
+        refundAmount
+    };
 };

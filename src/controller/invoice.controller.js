@@ -1,5 +1,5 @@
 import {
-    createInvoices,
+    createInvoices, createProductReturn,
     getAllInvoices, getAllMetaData,
     getInvoiceById, getPaymentHistoryByInvoiceId, updateChequePayment,
     updatedInvoices
@@ -234,6 +234,28 @@ export const getPaymentHistory = async (req, res) => {
             message: "Internal Server Error",
             errors: "Internal Server Error",
             data: null
+        });
+    }
+};
+
+export const returnProduct = async (req, res) => {
+    const data = req.body;
+    console.log(data)
+    try {
+        const returnedProduct = await createProductReturn(data);
+
+        return res.status(200).json({
+            success: true,
+            message: "Product return processed successfully.",
+            data: returnedProduct
+        });
+    } catch (err) {
+        console.error("Error processing return:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: "An error occurred while processing the return.",
+            error: err.message || err
         });
     }
 };
