@@ -691,11 +691,20 @@ export const createProductReturn = async (data) => {
     const updatedPaymentHistory = await DB.payment_History.findMany({ where: { invoice_id } });
     const totalPaid = updatedPaymentHistory.reduce((sum, ph) => sum + ph.paid_amount, 0);
 
-    // Update invoice status
-    let updatedStatus = 'PENDING';
-    if (totalPaid <= 0) updatedStatus = 'PENDING';
-    else if (totalPaid < totalAmount) updatedStatus = 'PARTIALLY_PAID';
-    else if (totalPaid >= totalAmount) updatedStatus = 'PAID';
+    // Use Math.round to avoid float mismatches
+    const round2 = (num) => Math.round(num * 100) / 100;
+
+    const totalAmountRounded = round2(totalAmount);
+    const totalPaidRounded = round2(totalPaid);
+
+    let updatedStatus = "PENDING";
+    if (totalPaidRounded <= 0) {
+        updatedStatus = "PENDING";
+    } else if (totalPaidRounded >= totalAmountRounded) {
+        updatedStatus = "PAID";
+    } else {
+        updatedStatus = "PARTIALLY_PAID";
+    }
 
     // Update the invoice status after the return
     await DB.invoice.update({
