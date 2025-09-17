@@ -679,30 +679,32 @@ export const createProductReturn = async (data) => {
         }
     });
 
-    // Recalculate total_amount for invoice (consider returns)
-    const newTotalAmount = invoice.invoice_items.reduce((sum, item) => {
-        const soldQty = item.qty - item.returned_qty - (item.id === invoiceItem.id ? return_qty : 0);
-        const itemTotal = soldQty * item.selling_price - ((item.discount_amount / item.qty) * soldQty || 0);
-        return sum + itemTotal;
-    }, 0);
-
-    // Update invoice total_amount
-    await DB.invoice.update({
-        where: {id: invoice_id},
-        data: {total_amount: newTotalAmount}
+    // Recalculate total invoice amount after returns
+    let totalAmount = 0;
+    invoice.invoice_items.forEach(item => {
+        const soldQty = item.qty - (item.returned_qty || 0) - (item.id === invoiceItem.id ? return_qty : 0);
+        const perUnitDiscount = (item.discount_amount || 0) / (item.qty || 1);
+        totalAmount += soldQty * (item.selling_price - perUnitDiscount);
     });
 
-    // Update invoice status based on new payment
-    const totalPaid = invoice.payment_history.reduce((sum, ph) => sum + ph.paid_amount, 0) - refundAmount;
-    let updatedStatus;
-    if (totalPaid >= newTotalAmount) updatedStatus = 'PAID';
-    else if (totalPaid > 0) updatedStatus = 'PARTIALLY_PAID';
-    else updatedStatus = 'PENDING';
+    // Recalculate total paid amount
+    const updatedPaymentHistory = await tx.payment_History.findMany({ where: { invoice_id } });
+    const totalPaid = updatedPaymentHistory.reduce((sum, ph) => sum + ph.paid_amount, 0);
 
+    // Update invoice status
+    let updatedStatus = 'PENDING';
+    if (totalPaid <= 0) updatedStatus = 'PENDING';
+    else if (totalPaid < totalAmount) updatedStatus = 'PARTIALLY_PAID';
+    else if (totalPaid >= totalAmount) updatedStatus = 'PAID';
+
+    // Update the invoice status after the return
     await DB.invoice.update({
         where: {id: invoice_id},
         data: {status: updatedStatus}
     });
 
-    return {productReturn, refundAmount, newTotalAmount};
+    return {
+        productReturn,
+        refundAmount
+    };
 };
