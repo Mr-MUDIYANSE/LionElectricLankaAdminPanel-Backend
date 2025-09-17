@@ -44,8 +44,16 @@ export const getDashboardDataByRange = async (range) => {
     });
 
     const totalOrders = invoices.length;
-    const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
-    const avgOrderValue = totalOrders ? parseFloat((totalRevenue / totalOrders).toFixed(2)) : 0;
+    const totalRevenue = invoices.reduce((sum, inv) => {
+        // Calculate the revenue for each invoice item considering the return qty
+        const invoiceRevenue = inv.invoice_items.reduce((itemSum, item) => {
+            const soldQty = item.qty - item.returned_qty; // Actual sold quantity
+            const itemRevenue = soldQty * (item.selling_price - (item.discount_amount / item.qty)); // Revenue for this item
+            return itemSum + itemRevenue; // Add the item revenue to the sum
+        }, 0);
+
+        return sum + invoiceRevenue; // Add this invoice's total revenue to the overall sum
+    }, 0);
 
     // Sales by Category
     const categorySales = {};
@@ -57,16 +65,18 @@ export const getDashboardDataByRange = async (range) => {
         });
     });
 
-    // Profit Calculation
     let totalProfit = 0;
     invoices.forEach(inv => {
         let invoiceCost = 0;
+
+        // Calculate cost for each invoice item, considering returned quantity
         inv.invoice_items.forEach(item => {
-            const qty = Number(item.qty) || 0;
+            const soldQty = item.qty - item.returned_qty; // Actual sold quantity
             const unitBuyingPrice = Number(item.stock.unit_buying_price) || 0;
-            invoiceCost += unitBuyingPrice * qty;
+            invoiceCost += unitBuyingPrice * soldQty; // Calculate cost for sold quantity
         });
-        totalProfit += (Number(inv.total_amount) || 0) - invoiceCost;
+
+        totalProfit = totalRevenue - invoiceCost;
     });
 
     // Top Products
@@ -74,14 +84,14 @@ export const getDashboardDataByRange = async (range) => {
     invoices.forEach(inv => {
         inv.invoice_items.forEach(item => {
             const title = item.stock.product.title;
-            if (!productSales[title]) productSales[title] = { qty: 0, revenue: 0 };
+            if (!productSales[title]) productSales[title] = {qty: 0, revenue: 0};
             productSales[title].qty += item.qty;
             productSales[title].revenue += item.qty * item.selling_price;
         });
     });
 
     const topProducts = Object.entries(productSales)
-        .map(([title, data]) => ({ title, qty: data.qty, revenue: data.revenue }))
+        .map(([title, data]) => ({title, qty: data.qty, revenue: data.revenue}))
         .sort((a, b) => b.qty - a.qty)
         .slice(0, 5);
 
@@ -125,6 +135,24 @@ export const getDashboardDataByRange = async (range) => {
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
+    // Calculate the total amount for each invoice (excluding returned items)
+    const totalAmountForInvoice = (items) => {
+        let invoiceTotal = 0;
+        items.forEach(item => {
+            // Calculate the total quantity considering the returned quantity
+            const qtyToCalculate = item.qty - (item.returned_qty || 0);
+
+            // Ensure the quantity is not negative
+            const validQty = Math.max(qtyToCalculate, 0);
+
+            // Calculate the item total (selling price * quantity - discount)
+            const itemTotal = validQty * (item.selling_price - (item.discount_amount / item.qty));
+            invoiceTotal += itemTotal;
+
+        });
+        return invoiceTotal;
+    };
+
     // Monthly Aggregation
     const monthlyData = {};
     invoices.forEach(inv => {
@@ -140,21 +168,29 @@ export const getDashboardDataByRange = async (range) => {
             };
         }
 
-        monthlyData[month].total_amount += inv.total_amount || 0;
+        // Calculate invoice total (with returns considered)
+        const invoiceTotal = totalAmountForInvoice(inv.invoice_items);
 
-        let invoicePaid = 0;
+        monthlyData[month].total_amount += invoiceTotal;
+
+        // Calculate paid amount, but cap it at invoiceTotal
+        let rawPaid = 0;
         inv.payment_history.forEach(payment => {
             if (payment.status === "CLEARED" || payment.status === "PENDING") {
-                invoicePaid += payment.paid_amount || 0;
+                rawPaid += payment.paid_amount || 0;
             }
         });
 
+        // Fix: don't allow paid > invoiceTotal
+        const invoicePaid = Math.min(invoiceTotal, rawPaid);
+
         monthlyData[month].total_paid_amount += invoicePaid;
 
-        const invoicePending = (inv.total_amount || 0) - invoicePaid;
+        // Pending = invoiceTotal - paid
+        const invoicePending = invoiceTotal - invoicePaid;
         monthlyData[month].total_pending_amount += invoicePending > 0 ? invoicePending : 0;
 
-        if (inv.status === "PAID") {
+        if (inv.status !== "RETURN") {
             monthlyData[month].paid_invoice_count += 1;
         } else {
             monthlyData[month].pending_invoice_count += 1;
@@ -169,7 +205,6 @@ export const getDashboardDataByRange = async (range) => {
         totalRevenue,
         totalProfit,
         totalOrders,
-        avgOrderValue,
         categorySales,
         salesTrend: monthlyData,
         topProducts,

@@ -76,27 +76,46 @@ export const getAllInvoices = async (date) => {
 };
 
 export const getAllMetaData = async (year, month) => {
+    // Fetch invoices with invoice items and return history
     const invoices = await DB.invoice.findMany({
         include: {
-            payment_history: {include: {chequeDetail: true}}
+            invoice_items: true,
+            Product_Return: {
+                include: { return_item: true }
+            },
+            payment_history: { include: { chequeDetail: true } }
         }
     });
 
+    // Calculate total / paid / pending for a list of invoices
     const calculateMeta = (invoiceList) => {
         let totalAmount = 0, totalPaidAmount = 0, totalPendingAmount = 0;
         let pendingCount = 0, paidCount = 0;
 
         invoiceList.forEach((inv) => {
-            totalAmount += inv.total_amount;
+            // Calculate total invoice amount considering returned quantities
+            let invoiceTotal = 0;
+            inv.invoice_items.forEach(item => {
+                const soldQty = item.qty - (item.returned_qty || 0);
+                const itemTotal = soldQty * item.selling_price - (item.discount_amount || 0);
+                invoiceTotal += itemTotal;
+            });
 
-            const clearedPaid = inv.payment_history.reduce((sum, p) => {
+            totalAmount += invoiceTotal;
+
+            // Calculate cleared payments
+            let clearedPaid = inv.payment_history.reduce((sum, p) => {
                 if (p.payment_type === "CASH" && p.status === "CLEARED") return sum + p.paid_amount;
                 if (p.payment_type === "CHEQUE" && p.chequeDetail?.status === "CLEARED") return sum + p.paid_amount;
                 return sum;
             }, 0);
 
+            // Don't allow paid > invoiceTotal (after return deduction)
+            clearedPaid = Math.min(clearedPaid, invoiceTotal);
+
             totalPaidAmount += clearedPaid;
-            const pending = inv.total_amount - clearedPaid;
+
+            const pending = invoiceTotal - clearedPaid;
             totalPendingAmount += pending;
 
             if (pending === 0) paidCount++;
@@ -114,37 +133,30 @@ export const getAllMetaData = async (year, month) => {
 
     // Overall data
     const overallData = calculateMeta(invoices);
-    const result = {data: overallData};
+    const result = { data: overallData };
 
     // Monthly / Yearly data
     if (year) {
         const selectedYear = parseInt(year);
-        const selectedMonth = month;
+        const selectedMonth = month ? parseInt(month) : null;
 
         const monthlyInvoices = invoices.filter(inv => {
             const invDate = new Date(inv.created_at);
             const invYear = invDate.getFullYear();
             const invMonth = invDate.getMonth() + 1;
-
-            if (selectedMonth) {
-                return invYear === selectedYear && invMonth === selectedMonth;
-            }
-            return invYear === selectedYear; // year only
+            if (selectedMonth) return invYear === selectedYear && invMonth === selectedMonth;
+            return invYear === selectedYear;
         });
 
-        if (monthlyInvoices.length) {
-            result.monthly_data = {
-                ...calculateMeta(monthlyInvoices)
-            };
-        } else {
-            result.monthly_data = {
+        result.monthly_data = monthlyInvoices.length
+            ? calculateMeta(monthlyInvoices)
+            : {
                 total_amount: 0,
                 total_paid_amount: 0,
                 total_pending_amount: 0,
                 pending_invoice_count: 0,
                 paid_invoice_count: 0
             };
-        }
     }
 
     return result;
@@ -184,6 +196,11 @@ export const getInvoiceById = async (invoiceId) => {
                         }
                     }
                 }
+            },
+            Product_Return: {
+                include: {
+                    return_item: true, // all returned items
+                }
             }
         }
     });
@@ -198,9 +215,7 @@ export const getInvoiceById = async (invoiceId) => {
 };
 
 export const createInvoices = async (customerId, data) => {
-    const {total_amount, paid_amount, payment_type, items, chequeDetail} = data;
-
-    console.log(data)
+    const {paid_amount, payment_type, items, chequeDetail} = data;
 
     const errors = [];
     if (!customerId || isNaN(customerId)) errors.push("Valid customer ID required.");
@@ -217,7 +232,6 @@ export const createInvoices = async (customerId, data) => {
 
     if (!Array.isArray(items) || items.length === 0) errors.push("At least one invoice item required.");
     if (paid_amount < 0) errors.push("Paid amount cannot be negative.");
-    if (total_amount <= 0) errors.push("Total amount must be greater than zero.");
     if (!payment_type) errors.push("Payment type is required.");
 
     const validPaymentTypes = ["CASH", "CHEQUE", "PURCHASE_ORDER"];
@@ -254,11 +268,18 @@ export const createInvoices = async (customerId, data) => {
         }
     }
 
+    // Calculate the total for the invoice
+    let invoiceTotal = 0;
+    items.forEach(item => {
+        const itemTotal = (item.selling_price * item.qty) - (item.discount_amount || 0);
+        invoiceTotal += itemTotal;
+    });
+
     // decide invoice status
     let invoiceStatus = "PENDING";
 
     if (payment_type === "CASH") {
-        if (paid_amount === total_amount) {
+        if (paid_amount === invoiceTotal) {
             invoiceStatus = "PAID";
         } else if (paid_amount > 0) {
             invoiceStatus = "PARTIALLY_PAID";
@@ -279,7 +300,6 @@ export const createInvoices = async (customerId, data) => {
     const invoice = await DB.invoice.create({
         data: {
             id: uniqueId,
-            total_amount: Number(total_amount),
             customer_id: Number(customerId),
             status: invoiceStatus,
             invoice_items: {
@@ -653,7 +673,7 @@ export const createProductReturn = async (data) => {
             payment_type: 'CASH',
             status: 'RETURN',
             invoice: {
-                connect: { id: invoice.id }  // Properly connect the invoice using its ID
+                connect: {id: invoice.id}  // Properly connect the invoice using its ID
             }
         }
     });
