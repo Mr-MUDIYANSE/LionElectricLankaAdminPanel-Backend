@@ -688,7 +688,7 @@ export const createProductReturn = async (data) => {
     });
 
     // Recalculate total paid amount
-    const updatedPaymentHistory = await tx.payment_History.findMany({ where: { invoice_id } });
+    const updatedPaymentHistory = await DB.payment_History.findMany({ where: { invoice_id } });
     const totalPaid = updatedPaymentHistory.reduce((sum, ph) => sum + ph.paid_amount, 0);
 
     // Update invoice status
