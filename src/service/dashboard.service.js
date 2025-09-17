@@ -127,8 +127,8 @@ export const getDashboardDataByRange = async (range) => {
             let lineTotal = soldQty * item.selling_price;
 
             // apply discount if available
-            if (item.discount && item.discount > 0) {
-                lineTotal -= item.discount;
+            if (item.discount_amount && item.discount_amount > 0) {
+                lineTotal -= item.discount_amount;
             }
 
             invoiceTotal += lineTotal;
