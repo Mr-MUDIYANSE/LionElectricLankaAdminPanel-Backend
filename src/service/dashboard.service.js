@@ -85,18 +85,27 @@ export const getDashboardDataByRange = async (range) => {
         inv.invoice_items.forEach(item => {
             const title = item.stock.product.title;
             if (!productSales[title]) productSales[title] = {qty: 0, revenue: 0};
-            productSales[title].qty += item.qty;
-            productSales[title].revenue += item.qty * item.selling_price;
+
+            // Actual sold quantity (excluding returns)
+            const soldQty = item.qty - item.returned_qty;
+
+            // Update qty and revenue (no discount considered)
+            productSales[title].qty += soldQty;
+            productSales[title].revenue += soldQty * item.selling_price;
         });
     });
 
     const topProducts = Object.entries(productSales)
-        .map(([title, data]) => ({title, qty: data.qty, revenue: data.revenue}))
+        .map(([title, data]) => ({
+            title,
+            qty: data.qty,
+            revenue: data.revenue
+        }))
         .sort((a, b) => b.qty - a.qty)
         .slice(0, 5);
 
-    const customerSales = {};
 
+    const customerSales = {};
     invoices.forEach(inv => {
         const custName = inv.customer?.name || "Unknown";
 
@@ -111,10 +120,23 @@ export const getDashboardDataByRange = async (range) => {
 
         customerSales[custName].orders += 1;
 
-        // full invoice price (paid + pending)
-        customerSales[custName].total += inv.total_amount || 0;
+        // ---- Calculate invoice total with discount ----
+        let invoiceTotal = 0;
+        inv.invoice_items.forEach(item => {
+            const soldQty = item.qty - (item.returned_qty || 0);
+            let lineTotal = soldQty * item.selling_price;
 
-        // sum payments
+            // apply discount if available
+            if (item.discount && item.discount > 0) {
+                lineTotal -= item.discount;
+            }
+
+            invoiceTotal += lineTotal;
+        });
+
+        customerSales[custName].total += invoiceTotal;
+
+        // ---- Paid calculation ----
         let paid = 0;
         inv.payment_history.forEach(p => {
             if (p.status === "CLEARED") {
@@ -123,14 +145,17 @@ export const getDashboardDataByRange = async (range) => {
         });
 
         customerSales[custName].paid_total += paid;
-        customerSales[custName].pending_total += (inv.total_amount || 0) - paid;
+        customerSales[custName].pending_total += invoiceTotal - paid;
     });
 
+// ---- Top customers ----
     const topCustomers = Object.entries(customerSales)
         .map(([name, data]) => ({
             name,
             orders: data.orders,
-            total: data.total,              // full invoice total
+            total: data.total,         // total with discount applied
+            paid_total: data.paid_total,
+            pending_total: data.pending_total
         }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
@@ -156,7 +181,7 @@ export const getDashboardDataByRange = async (range) => {
     // Monthly Aggregation
     const monthlyData = {};
     invoices.forEach(inv => {
-        const month = inv.created_at.toLocaleString("default", { month: "short" });
+        const month = inv.created_at.toLocaleString("default", {month: "short"});
 
         if (!monthlyData[month]) {
             monthlyData[month] = {
