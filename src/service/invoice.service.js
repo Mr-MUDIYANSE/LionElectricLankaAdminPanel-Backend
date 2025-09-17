@@ -694,24 +694,25 @@ export const createProductReturn = async (data) => {
     });
 
     // Get updated payment history
-    const updatedPaymentHistory = await DB.payment_History.findMany({where: {invoice_id}});
+    const updatedPaymentHistory = await DB.payment_History.findMany({ where: { invoice_id } });
 
-// Sum payments (don't use abs, keep actual signs)
+    // Sum payments (keep + and - values)
     const totalPaid = updatedPaymentHistory.reduce((sum, ph) => sum + (ph.paid_amount || 0), 0);
 
     let updatedStatus = "PENDING";
+
+    // Small tolerance for floating point issues
+    const isEqual = Math.abs(totalPaid - totalAmount) < 0.01;
 
     if (totalAmount === 0) {
         updatedStatus = "PAID";
     } else if (totalPaid <= 0) {
         updatedStatus = "PENDING";
-    } else if (totalPaid < totalAmount) {
+    } else if (totalPaid < totalAmount && !isEqual) {
         updatedStatus = "PARTIALLY_PAID";
-    } else if (totalPaid === totalAmount) {
+    } else if (isEqual || totalPaid > totalAmount) {
+        // equal OR overpaid → consider PAID
         updatedStatus = "PAID";
-    } else if (totalPaid > totalAmount) {
-        // Customer has overpaid → still PENDING (needs adjustment/refund)
-        updatedStatus = "PENDING";
     }
 
     // Update invoice
