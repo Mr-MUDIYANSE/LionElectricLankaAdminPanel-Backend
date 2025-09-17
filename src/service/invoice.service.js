@@ -97,7 +97,7 @@ export const getAllMetaData = async (year, month) => {
             let invoiceTotal = 0;
             inv.invoice_items.forEach(item => {
                 const soldQty = item.qty - (item.returned_qty || 0);
-                const itemTotal = soldQty * item.selling_price - (item.discount_amount || 0);
+                const itemTotal = soldQty * item.selling_price - (item.discount_amount/item.qty || 0);
                 invoiceTotal += itemTotal;
             });
 
