@@ -96,9 +96,8 @@ export const getAllMetaData = async (year, month) => {
             // Calculate total invoice amount considering returned quantities
             let invoiceTotal = 0;
             inv.invoice_items.forEach(item => {
-                const soldQty = item.qty - (item.returned_qty || 0); // actual sold qty
-                const perUnitDiscount = (item.discount_amount || 0) / item.qty; // prorated discount per unit
-                const itemTotal = soldQty * (item.selling_price - perUnitDiscount); // apply discount per sold unit
+                const soldQty = item.qty - (item.returned_qty || 0);
+                const itemTotal = soldQty * item.selling_price - (item.discount_amount || 0);
                 invoiceTotal += itemTotal;
             });
 
@@ -162,6 +161,7 @@ export const getAllMetaData = async (year, month) => {
 
     return result;
 };
+
 
 export const getInvoiceById = async (invoiceId) => {
     if (!invoiceId) {
@@ -679,41 +679,54 @@ export const createProductReturn = async (data) => {
         }
     });
 
-    // Recalculate total invoice amount after returns
+    // --- 🔄 Recalculate invoice totals after return ---
+
+    // Recalculate total invoice amount
     let totalAmount = 0;
     invoice.invoice_items.forEach(item => {
-        const soldQty = item.qty - (item.returned_qty || 0) - (item.id === invoiceItem.id ? return_qty : 0);
-        const perUnitDiscount = (item.discount_amount || 0) / (item.qty || 1);
+        const soldQty =
+            item.qty -
+            (item.returned_qty || 0) -
+            (item.id === invoiceItem.id ? return_qty : 0);
+
+        const perUnitDiscount = item.discount_amount / item.qty;
         totalAmount += soldQty * (item.selling_price - perUnitDiscount);
     });
 
-    // Recalculate total paid amount
-    const updatedPaymentHistory = await DB.payment_History.findMany({ where: { invoice_id } });
-    const totalPaid = updatedPaymentHistory.reduce((sum, ph) => sum + ph.paid_amount, 0);
-
-    // Use Math.round to avoid float mismatches
-    const round2 = (num) => Math.round(num * 100) / 100;
-
-    const totalAmountRounded = round2(totalAmount);
-    const totalPaidRounded = round2(totalPaid);
+    // Get updated payment history
+    const updatedPaymentHistory = await DB.payment_History.findMany({where: {invoice_id}});
+    // Use absolute values (treat refund as money already adjusted)
+    const totalPaid = updatedPaymentHistory.reduce((sum, ph) => sum + Math.abs(ph.paid_amount || 0), 0);
 
     let updatedStatus = "PENDING";
-    if (totalPaidRounded <= 0) {
-        updatedStatus = "PENDING";
-    } else if (totalPaidRounded >= totalAmountRounded) {
+
+    if (totalAmount === 0) {
         updatedStatus = "PAID";
-    } else {
+    } else if (totalPaid <= 0) {
+        updatedStatus = "PENDING";
+    } else if (totalPaid < totalAmount) {
         updatedStatus = "PARTIALLY_PAID";
+    } else if (totalPaid >= totalAmount) {
+        updatedStatus = "PAID";
     }
 
-    // Update the invoice status after the return
+    // Update invoice
     await DB.invoice.update({
         where: {id: invoice_id},
         data: {status: updatedStatus}
     });
 
+    console.log("invoice_id", invoice_id);
+    console.log("refundAmount", refundAmount);
+    console.log("totalPaid", totalPaid);
+    console.log("totalAmount", totalAmount);
+    console.log("updatedStatus", updatedStatus);
+
     return {
         productReturn,
-        refundAmount
+        refundAmount,
+        totalPaid,
+        totalAmount,
+        updatedStatus
     };
 };
