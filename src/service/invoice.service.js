@@ -96,8 +96,9 @@ export const getAllMetaData = async (year, month) => {
             // Calculate total invoice amount considering returned quantities
             let invoiceTotal = 0;
             inv.invoice_items.forEach(item => {
-                const soldQty = item.qty - (item.returned_qty || 0);
-                const itemTotal = soldQty * item.selling_price - (item.discount_amount/item.qty || 0);
+                const soldQty = item.qty - (item.returned_qty || 0); // actual sold qty
+                const perUnitDiscount = (item.discount_amount || 0) / item.qty; // prorated discount per unit
+                const itemTotal = soldQty * (item.selling_price - perUnitDiscount); // apply discount per sold unit
                 invoiceTotal += itemTotal;
             });
 
