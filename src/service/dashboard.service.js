@@ -170,30 +170,32 @@ export const getDashboardDataByRange = async (range) => {
 
         // Calculate invoice total (with returns considered)
         const invoiceTotal = totalAmountForInvoice(inv.invoice_items);
-
         monthlyData[month].total_amount += invoiceTotal;
 
-        // Calculate paid amount, but cap it at invoiceTotal
+        // Calculate paid amount, including cheque cleared
         let rawPaid = 0;
         inv.payment_history.forEach(payment => {
-            if (payment.status === "CLEARED" || payment.status === "PENDING") {
+            if (
+                (payment.payment_type === "CASH" && payment.status === "CLEARED") ||
+                (payment.payment_type === "CHEQUE" && payment.chequeDetail?.status === "CLEARED")
+            ) {
                 rawPaid += payment.paid_amount || 0;
             }
         });
 
-        // Fix: don't allow paid > invoiceTotal
+        // Cap paid at invoiceTotal
         const invoicePaid = Math.min(invoiceTotal, rawPaid);
-
         monthlyData[month].total_paid_amount += invoicePaid;
 
-        // Pending = invoiceTotal - paid
+        // Pending amount
         const invoicePending = invoiceTotal - invoicePaid;
         monthlyData[month].total_pending_amount += invoicePending > 0 ? invoicePending : 0;
 
-        if (inv.status !== "RETURN") {
-            monthlyData[month].paid_invoice_count += 1;
+        // Count invoices correctly based on pending amount
+        if (invoicePending <= 0) {
+            monthlyData[month].paid_invoice_count += 1; // fully paid
         } else {
-            monthlyData[month].pending_invoice_count += 1;
+            monthlyData[month].pending_invoice_count += 1; // has pending
         }
     });
 

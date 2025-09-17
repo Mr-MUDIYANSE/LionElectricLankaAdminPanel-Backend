@@ -81,9 +81,9 @@ export const getAllMetaData = async (year, month) => {
         include: {
             invoice_items: true,
             Product_Return: {
-                include: { return_item: true }
+                include: {return_item: true}
             },
-            payment_history: { include: { chequeDetail: true } }
+            payment_history: {include: {chequeDetail: true}}
         }
     });
 
@@ -134,7 +134,7 @@ export const getAllMetaData = async (year, month) => {
 
     // Overall data
     const overallData = calculateMeta(invoices);
-    const result = { data: overallData };
+    const result = {data: overallData};
 
     // Monthly / Yearly data
     if (year) {
@@ -679,41 +679,30 @@ export const createProductReturn = async (data) => {
         }
     });
 
-    // Handle Invoice Status Update
-    let updatedStatus = invoice.status;
+    // Recalculate total_amount for invoice (consider returns)
+    const newTotalAmount = invoice.invoice_items.reduce((sum, item) => {
+        const soldQty = item.qty - item.returned_qty - (item.id === invoiceItem.id ? return_qty : 0);
+        const itemTotal = soldQty * item.selling_price - ((item.discount_amount / item.qty) * soldQty || 0);
+        return sum + itemTotal;
+    }, 0);
 
-    // If payment history is empty, initialize it as an empty array
-    const paymentHistory = invoice.payment_history || [];
+    // Update invoice total_amount
+    await DB.invoice.update({
+        where: {id: invoice_id},
+        data: {total_amount: newTotalAmount}
+    });
 
-    const totalPaid = paymentHistory.reduce((sum, ph) => sum + ph.paid_amount, 0);
-    const newPaidAmount = totalPaid - refundAmount;
+    // Update invoice status based on new payment
+    const totalPaid = invoice.payment_history.reduce((sum, ph) => sum + ph.paid_amount, 0) - refundAmount;
+    let updatedStatus;
+    if (totalPaid >= newTotalAmount) updatedStatus = 'PAID';
+    else if (totalPaid > 0) updatedStatus = 'PARTIALLY_PAID';
+    else updatedStatus = 'PENDING';
 
-    // Handle status updates based on the payment status
-    if (updatedStatus === 'PENDING') {
-        // If the invoice is PENDING and the return happens, it stays PENDING
-        // We could also mark it as "RETURNED" if you have such status (optional)
-    } else if (updatedStatus === 'PARTIALLY_PAID') {
-        if (newPaidAmount === invoice.total_amount) {
-            updatedStatus = 'PAID';
-        } else {
-            updatedStatus = 'PARTIALLY_PAID';
-        }
-    } else if (updatedStatus === 'PAID') {
-        if (newPaidAmount < invoice.total_amount) {
-            updatedStatus = 'PARTIALLY_PAID';
-        } else if (newPaidAmount === 0) {
-            updatedStatus = 'PENDING';
-        }
-    }
-
-    // Update the invoice status after the return
     await DB.invoice.update({
         where: {id: invoice_id},
         data: {status: updatedStatus}
     });
 
-    return {
-        productReturn,
-        refundAmount
-    };
+    return {productReturn, refundAmount, newTotalAmount};
 };
