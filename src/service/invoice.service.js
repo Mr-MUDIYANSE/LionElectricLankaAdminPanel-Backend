@@ -716,12 +716,6 @@ export const createProductReturn = async (data) => {
         data: {status: updatedStatus}
     });
 
-    console.log("invoice_id", invoice_id);
-    console.log("refundAmount", refundAmount);
-    console.log("totalPaid", totalPaid);
-    console.log("totalAmount", totalAmount);
-    console.log("updatedStatus", updatedStatus);
-
     return {
         productReturn,
         refundAmount,
