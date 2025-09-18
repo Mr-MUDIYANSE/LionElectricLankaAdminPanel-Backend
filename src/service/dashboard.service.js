@@ -183,11 +183,9 @@ export const getDashboardDataByRange = async (range) => {
         return invoiceTotal;
     };
 
-    // Monthly Aggregation
     const monthlyData = {};
-
     invoices.forEach(inv => {
-        const month = inv.created_at.toLocaleString("default", { month: "short" });
+        const month = inv.created_at.toLocaleString("default", {month: "short"});
 
         if (!monthlyData[month]) {
             monthlyData[month] = {
@@ -204,34 +202,35 @@ export const getDashboardDataByRange = async (range) => {
         monthlyData[month].total_amount += invoiceTotal;
 
         // Calculate total paid amount (include cleared cash and cheque payments)
-        let rawPaid = 0;
+        let invoicePaid = 0;
         inv.payment_history.forEach(payment => {
             if (
                 (payment.payment_type === "CASH" && payment.status === "CLEARED") ||
                 (payment.payment_type === "CHEQUE" && payment.chequeDetail?.status === "CLEARED")
             ) {
-                rawPaid += payment.paid_amount || 0;
+                invoicePaid += payment.paid_amount || 0;
             }
         });
 
         // Cap paid at invoice total
-        const invoicePaid = Math.min(invoiceTotal, rawPaid);
-        monthlyData[month].total_paid_amount += invoicePaid;
+        invoicePaid = Math.min(invoicePaid, invoiceTotal);
 
         // Pending amount
-        const invoicePending = invoiceTotal - invoicePaid;
-        monthlyData[month].total_pending_amount += invoicePending > 0 ? invoicePending : 0;
+        const invoicePending = Math.max(invoiceTotal - invoicePaid, 0);
 
-        // Count invoices by status
-        // Use InvoiceStatus enum if available, otherwise determine dynamically
-        const status = inv.status; // "PAID", "PENDING", "PARTIALLY_PAID"
-
-        if (status === "PAID") {
+        // Aggregate amounts by month based on invoice status
+        if (inv.status === "PAID") {
+            monthlyData[month].total_paid_amount += invoicePaid;
             monthlyData[month].paid_invoice_count += 1;
-        } else if (status === "PENDING" || status === "PARTIALLY_PAID") {
+        } else if (inv.status === "PENDING" || inv.status === "PARTIALLY_PAID") {
+            monthlyData[month].total_pending_amount += invoicePending;
             monthlyData[month].pending_invoice_count += 1;
         }
+
+        // Also add total amount (for reference)
+        monthlyData[month].total_amount += invoiceTotal;
     });
+
 
     const allCustomers = await DB.customer.findMany();
 
