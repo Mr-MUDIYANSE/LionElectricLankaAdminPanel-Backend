@@ -128,18 +128,13 @@ export const getDashboardDataByRange = async (range) => {
         // ---- Calculate invoice total with discount ----
         let invoiceTotal = 0;
         inv.invoice_items.forEach(item => {
-            const soldQty = item.qty - (item.returned_qty || 0);
-            let lineTotal = soldQty * item.selling_price;
+            const qtyToCalculate = Math.max(item.qty - (item.returned_qty || 0), 0);
+            const perUnitDiscount = (item.discount_amount || 0) / item.qty;
+            invoiceTotal += qtyToCalculate * (item.selling_price - perUnitDiscount);
 
-            // apply discount if available
-            if (item.discount_amount && item.discount_amount > 0) {
-                lineTotal -= item.discount_amount;
-            }
-
-            invoiceTotal += lineTotal;
         });
 
-        customerSales[custName].total += invoiceTotal;
+        customerSales[custName].total = invoiceTotal;
 
         // ---- Paid calculation ----
         let paid = 0;
@@ -149,24 +144,18 @@ export const getDashboardDataByRange = async (range) => {
             }
         });
 
-        customerSales[custName].paid_total += paid;
-        customerSales[custName].pending_total += invoiceTotal - paid;
     });
 
-// ---- Top customers ----
+    // ---- Top customers ----
     const topCustomers = Object.entries(customerSales)
         .map(([name, data]) => ({
             name,
             orders: data.orders,
             total: data.total,         // total with discount applied
-            paid_total: data.paid_total,
-            pending_total: data.pending_total
         }))
         .sort((a, b) => b.total - a.total)
         .slice(0, 5);
 
-    // Calculate the total amount for each invoice (excluding returned items)
-    // Calculate total invoice amount (considering returned items and discount)
     const totalAmountForInvoice = (items) => {
         let invoiceTotal = 0;
         items.forEach(item => {
@@ -207,8 +196,6 @@ export const getDashboardDataByRange = async (range) => {
 
         // Cap paid amount to invoice total
         invoicePaid = Math.min(invoicePaid, invoiceTotal);
-
-        console.log("invoicePaid", invoicePaid)
 
         // Calculate pending amount
         const invoicePending = Math.max(invoiceTotal - invoicePaid, 0);
