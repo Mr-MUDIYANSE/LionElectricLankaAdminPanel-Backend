@@ -470,8 +470,53 @@ export const updatedInvoices = async (invoiceId, data) => {
     return updatedInvoice;
 };
 
+const recalculateInvoiceStatus = async (invoiceId) => {
+    const invoice = await DB.invoice.findUnique({
+        where: { id: invoiceId },
+        include: {
+            invoice_items: true,
+            payment_history: true
+        }
+    });
+
+    if (!invoice) throw new Error(`Invoice ID ${invoiceId} not found`);
+
+    // Calculate total invoice amount (exclude returned qty)
+    let totalAmount = 0;
+    invoice.invoice_items.forEach(item => {
+        const soldQty = item.qty - (item.returned_qty || 0);
+        const perUnitDiscount = (item.discount_amount || 0) / item.qty;
+        totalAmount += soldQty * (item.selling_price - perUnitDiscount);
+    });
+
+    // Calculate total paid (ignore RETURN + rejected/expired cheques)
+    const totalPaid = invoice.payment_history.reduce((sum, ph) => {
+        if (
+            ph.status === "RETURN" ||
+            (ph.payment_type === "CHEQUE" && (ph.status === "REJECTED" || ph.status === "EXPIRED"))
+        ) return sum;
+        if (ph.status === "CLEARED" || ph.payment_type === "CASH") return sum + ph.paid_amount;
+        return sum;
+    }, 0);
+
+    // Decide invoice status
+    let invoiceStatus = "PENDING";
+    if (totalAmount === 0 || totalPaid === totalAmount) invoiceStatus = "PAID";
+    else if (totalPaid > 0 && totalPaid < totalAmount) invoiceStatus = "PARTIALLY_PAID";
+
+    // Update invoice
+    return DB.invoice.update({
+        where: {id: invoiceId},
+        data: {status: invoiceStatus},
+        include: {
+            invoice_items: true,
+            payment_history: {include: {chequeDetail: true}}
+        }
+    });
+};
+
 export const updateChequePayment = async (paymentId, data) => {
-    const {status} = data;
+    const { status } = data;
 
     const validStatuses = ["PENDING", "CLEARED", "REJECTED", "EXPIRED"];
     const errors = [];
@@ -487,7 +532,7 @@ export const updateChequePayment = async (paymentId, data) => {
     }
 
     const chequePayment = await DB.cheque_Details.findUnique({
-        where: {payment_id: paymentId}
+        where: { payment_id: paymentId }
     });
 
     if (!chequePayment) {
@@ -496,68 +541,32 @@ export const updateChequePayment = async (paymentId, data) => {
         throw error;
     }
 
-    // Check expiry before update
-    if (chequePayment.cheque_date && new Date(chequePayment.cheque_date) < new Date()) {
-        const error = new Error("Cheque has expired. Cannot update this payment.");
-        error.status = 400;
-        throw error;
-    }
-
+    // Auto-expire if past cheque date
     let finalStatus = status;
-
-    // Auto-expire logic
     if (chequePayment.cheque_date && new Date(chequePayment.cheque_date) < new Date()) {
         finalStatus = "EXPIRED";
     }
 
     // Update payment history
     await DB.payment_History.update({
-        where: {id: paymentId},
-        data: {
-            status: finalStatus
-        }
+        where: { id: paymentId },
+        data: { status: finalStatus }
     });
 
-    // Update cheque
+    // Update cheque details
     const updatedCheque = await DB.cheque_Details.update({
-        where: {payment_id: paymentId},
-        data: {
-            status: finalStatus
-        }
+        where: { payment_id: paymentId },
+        data: { status: finalStatus }
     });
 
-    // If cleared, re-check invoice status
-    if (finalStatus === "CLEARED") {
-        const payment = await DB.payment_History.findUnique({
-            where: {id: paymentId},
-            include: {invoice: true},
-        });
+    // Recalculate invoice status for any status change
+    const payment = await DB.payment_History.findUnique({
+        where: { id: paymentId },
+        include: { invoice: { include: { invoice_items: true, payment_history: true } } }
+    });
 
-        if (payment) {
-            const invoice = payment.invoice;
-
-            // Get all payments for invoice
-            const payments = await DB.payment_History.findMany({
-                where: {invoice_id: invoice.id},
-            });
-
-            // Count only valid cleared payments
-            const totalCleared = payments.reduce((sum, p) => {
-                if (p.payment_type === "CASH" || (p.payment_type === "CHEQUE" && p.status === "CLEARED")) {
-                    return sum + p.paid_amount;
-                }
-                return sum;
-            }, 0);
-
-            let invoiceStatus = "PENDING";
-            if (totalCleared === invoice.total_amount) invoiceStatus = "PAID";
-            else if (totalCleared > 0) invoiceStatus = "PARTIALLY_PAID";
-
-            await DB.invoice.update({
-                where: {id: invoice.id},
-                data: {status: invoiceStatus},
-            });
-        }
+    if (payment?.invoice) {
+        await recalculateInvoiceStatus(payment.invoice.id);
     }
 
     return updatedCheque;
