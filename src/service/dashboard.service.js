@@ -74,14 +74,14 @@ export const getDashboardDataByRange = async (range) => {
     invoices.forEach(inv => {
         let invoiceCost = 0;
 
-        // Calculate cost for each invoice item, considering returned quantity
         inv.invoice_items.forEach(item => {
-            const soldQty = item.qty - item.returned_qty; // Actual sold quantity
+            const soldQty = (item.qty - item.returned_qty);
+            const unitSellingPrice = Number(item.stock.unit_selling_price) - (item.discount_amount / item.qty);
             const unitBuyingPrice = Number(item.stock.unit_buying_price) || 0;
-            invoiceCost += unitBuyingPrice * soldQty; // Calculate cost for sold quantity
+            // const unitSellingPrice = Number(item.stock.unit_selling_price) || 0;
+            totalProfit += (unitSellingPrice - unitBuyingPrice) * soldQty;
         });
 
-        totalProfit = totalRevenue - invoiceCost;
     });
 
     // Top Products
@@ -166,65 +166,62 @@ export const getDashboardDataByRange = async (range) => {
         .slice(0, 5);
 
     // Calculate the total amount for each invoice (excluding returned items)
+    // Calculate total invoice amount (considering returned items and discount)
     const totalAmountForInvoice = (items) => {
         let invoiceTotal = 0;
         items.forEach(item => {
-            // Calculate the total quantity considering the returned quantity
-            const qtyToCalculate = item.qty - (item.returned_qty || 0);
-
-            // Ensure the quantity is not negative
-            const validQty = Math.max(qtyToCalculate, 0);
-
-            // Calculate the item total (selling price * quantity - discount)
-            const itemTotal = validQty * (item.selling_price - (item.discount_amount / item.qty));
-            invoiceTotal += itemTotal;
-
+            const qtyToCalculate = Math.max(item.qty - (item.returned_qty || 0), 0);
+            const perUnitDiscount = (item.discount_amount || 0) / item.qty;
+            invoiceTotal += qtyToCalculate * (item.selling_price - perUnitDiscount);
         });
         return invoiceTotal;
     };
 
+// Aggregate monthly data
     const monthlyData = {};
 
     invoices.forEach(inv => {
-        const month = inv.created_at.toLocaleString("default", { month: "short" });
+        const month = inv.created_at.toLocaleString("default", {month: "short"});
 
         if (!monthlyData[month]) {
             monthlyData[month] = {
                 total_amount: 0,
                 total_paid_amount: 0,
                 total_pending_amount: 0,
-                pending_invoice_count: 0,
                 paid_invoice_count: 0,
+                pending_invoice_count: 0
             };
         }
 
-        // Calculate invoice total (with returns considered)
+        // Calculate invoice total
         const invoiceTotal = totalAmountForInvoice(inv.invoice_items);
-        monthlyData[month].total_amount += invoiceTotal;
 
-        // Calculate total paid amount (include cleared cash and cheque payments)
+        // Calculate paid amount from payment history
         let invoicePaid = 0;
-        inv.payment_history.forEach(payment => {
-            if (
-                (payment.payment_type === "CASH" && payment.status === "CLEARED") ||
-                (payment.payment_type === "CHEQUE" && payment.chequeDetail?.status === "CLEARED")
-            ) {
-                invoicePaid += payment.paid_amount || 0;
+        inv.payment_history.forEach(p => {
+            // Only include valid payments
+            if (p.status === "CLEARED") {
+                invoicePaid += p.paid_amount || 0;
             }
         });
 
-        // Cap paid at invoice total
+        // Cap paid amount to invoice total
         invoicePaid = Math.min(invoicePaid, invoiceTotal);
 
-        // Pending amount
+        console.log("invoicePaid", invoicePaid)
+
+        // Calculate pending amount
         const invoicePending = Math.max(invoiceTotal - invoicePaid, 0);
 
-        // Aggregate amounts by invoice status
-        if (inv.status === "PAID") {
-            monthlyData[month].total_paid_amount += invoicePaid;
+        // Update monthly totals
+        monthlyData[month].total_amount += invoiceTotal;
+        monthlyData[month].total_paid_amount += invoicePaid;
+        monthlyData[month].total_pending_amount += invoicePending;
+
+        // Count invoices
+        if (invoicePending <= 0) {
             monthlyData[month].paid_invoice_count += 1;
-        } else if (inv.status === "PENDING" || inv.status === "PARTIALLY_PAID") {
-            monthlyData[month].total_pending_amount += invoicePending;
+        } else {
             monthlyData[month].pending_invoice_count += 1;
         }
     });
