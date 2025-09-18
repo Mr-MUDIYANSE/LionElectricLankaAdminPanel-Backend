@@ -687,9 +687,15 @@ export const createProductReturn = async (data) => {
         totalAmount += soldQty * (item.selling_price - perUnitDiscount);
     });
 
-    const updatedPaymentHistory = await DB.payment_History.findMany({where: {invoice_id}});
-    const totalPaid = updatedPaymentHistory.reduce(
-        (sum, ph) => sum + Math.abs(ph.paid_amount || 0),
+    const updatedPaymentHistory = await DB.payment_History.findMany({
+        where: { invoice_id }
+    });
+
+// exclude RETURN type payments
+    const validPayments = updatedPaymentHistory.filter(ph => ph.status !== "RETURN");
+
+    const totalPaid = validPayments.reduce(
+        (sum, ph) => sum + (ph.paid_amount || 0),
         0
     );
 
@@ -701,14 +707,9 @@ export const createProductReturn = async (data) => {
         updatedStatus = "PENDING";
     } else if (totalPaid < totalAmount) {
         updatedStatus = "PARTIALLY_PAID";
-    } else if (totalPaid > totalAmount) {
+    } else if (totalPaid >= totalAmount) {
         updatedStatus = "PAID";
     }
-
-    console.log("totalAmount",totalAmount)
-    console.log("updatedPaymentHistory",updatedPaymentHistory)
-    console.log("totalPaid",totalPaid)
-    console.log("updatedStatus",updatedStatus)
 
     // Update invoice
     await DB.invoice.update({
