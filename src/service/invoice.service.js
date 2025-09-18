@@ -394,9 +394,17 @@ export const updatedInvoices = async (invoiceId, data) => {
         return sum + ph.paid_amount;
     }, 0);
 
+    let totalAmount = 0;
+
+    invoice.invoice_items.forEach(item => {
+        const soldQty = item.qty - (item.returned_qty || 0); // exclude returned qty
+        const perUnitDiscount = (item.discount_amount || 0) / item.qty; // distribute discount per unit
+        const itemTotal = soldQty * (item.selling_price - perUnitDiscount);
+        totalAmount += itemTotal;
+    });
 
     // Prevent overpayment
-    if (totalPaid + Number(paid_amount) > invoice.total_amount) {
+    if (totalPaid + Number(paid_amount) > totalAmount) {
         const error = new Error("Paid amount exceeds total invoice amount.");
         error.status = 400;
         error.errors = [`Total paid (${totalPaid + Number(paid_amount)}) cannot exceed invoice total (${invoice.total_amount})`];
@@ -414,7 +422,7 @@ export const updatedInvoices = async (invoiceId, data) => {
             return sum + ph.paid_amount;
         }, 0) + paid_amount;
 
-        if (totalPaid === invoice.total_amount) {
+        if (totalPaid === totalAmount) {
             invoiceStatus = "PAID";
         } else if (totalPaid > 0) {
             invoiceStatus = "PARTIALLY_PAID";
@@ -424,7 +432,7 @@ export const updatedInvoices = async (invoiceId, data) => {
     }
 
     // Create a new payment history entry
-    const newPayment = await DB.payment_History.create({
+    await DB.payment_History.create({
         data: {
             invoice_id: invoiceId,
             paid_amount: Number(paid_amount),
@@ -691,9 +699,8 @@ export const createProductReturn = async (data) => {
         where: { invoice_id }
     });
 
-// exclude RETURN type payments
+    // only include CLEARED payments
     const validPayments = updatedPaymentHistory.filter(ph => ph.status === "CLEARED");
-
     const totalPaid = validPayments.reduce(
         (sum, ph) => sum + (ph.paid_amount || 0),
         0
