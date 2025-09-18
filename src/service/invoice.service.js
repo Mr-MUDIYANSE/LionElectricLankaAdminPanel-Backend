@@ -679,41 +679,36 @@ export const createProductReturn = async (data) => {
         }
     });
 
-    // --- 🔄 Recalculate invoice totals after return ---
-
     // Recalculate total invoice amount
     let totalAmount = 0;
     invoice.invoice_items.forEach(item => {
-        const soldQty =
-            item.qty -
-            (item.returned_qty || 0) -
-            (item.id === invoiceItem.id ? return_qty : 0);
-
+        const soldQty = (item.qty - item.returned_qty) - (item.id === invoiceItem.id ? return_qty : 0);
         const perUnitDiscount = item.discount_amount / item.qty;
         totalAmount += soldQty * (item.selling_price - perUnitDiscount);
     });
 
-    // Get updated payment history
-    const updatedPaymentHistory = await DB.payment_History.findMany({ where: { invoice_id } });
-
-    // Sum payments (keep + and - values)
-    const totalPaid = updatedPaymentHistory.reduce((sum, ph) => sum + (ph.paid_amount || 0), 0);
+    const updatedPaymentHistory = await DB.payment_History.findMany({where: {invoice_id}});
+    const totalPaid = updatedPaymentHistory.reduce(
+        (sum, ph) => sum + Math.abs(ph.paid_amount || 0),
+        0
+    );
 
     let updatedStatus = "PENDING";
-
-    // Small tolerance for floating point issues
-    const isEqual = Math.abs(totalPaid - totalAmount) < 0.01;
 
     if (totalAmount === 0) {
         updatedStatus = "PAID";
     } else if (totalPaid <= 0) {
         updatedStatus = "PENDING";
-    } else if (totalPaid < totalAmount && !isEqual) {
+    } else if (totalPaid < totalAmount) {
         updatedStatus = "PARTIALLY_PAID";
-    } else if (isEqual || totalPaid > totalAmount) {
-        // equal OR overpaid → consider PAID
+    } else if (totalPaid > totalAmount) {
         updatedStatus = "PAID";
     }
+
+    console.log("totalAmount",totalAmount)
+    console.log("updatedPaymentHistory",updatedPaymentHistory)
+    console.log("totalPaid",totalPaid)
+    console.log("updatedStatus",updatedStatus)
 
     // Update invoice
     await DB.invoice.update({
