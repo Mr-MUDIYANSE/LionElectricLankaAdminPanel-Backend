@@ -7,8 +7,13 @@ export const getDashboardDataByRange = async (range) => {
     if (/^\d{4}$/.test(range)) {
         // Range is a year like "2024"
         const year = parseInt(range, 10);
-        fromDate = new Date(year, 0, 1);   // Jan 1 of that year
-        toDate = new Date(year, 11, 31, 23, 59, 59, 999); // Dec 31 of that year
+        fromDate = new Date(year, 0, 1);   // Jan 1
+        toDate = new Date(year, 11, 31, 23, 59, 59, 999); // Dec 31
+    } else if (/^\d{4}-\d{2}$/.test(range)) {
+        // Range is year-month like "2024-09"
+        const [year, month] = range.split("-").map(Number);
+        fromDate = new Date(year, month - 1, 1); // first day of month
+        toDate = new Date(year, month, 0, 23, 59, 59, 999); // last day of month
     } else {
         // Default: current year
         const currentYear = now.getFullYear();
@@ -180,8 +185,9 @@ export const getDashboardDataByRange = async (range) => {
 
     // Monthly Aggregation
     const monthlyData = {};
+
     invoices.forEach(inv => {
-        const month = inv.created_at.toLocaleString("default", {month: "short"});
+        const month = inv.created_at.toLocaleString("default", { month: "short" });
 
         if (!monthlyData[month]) {
             monthlyData[month] = {
@@ -197,7 +203,7 @@ export const getDashboardDataByRange = async (range) => {
         const invoiceTotal = totalAmountForInvoice(inv.invoice_items);
         monthlyData[month].total_amount += invoiceTotal;
 
-        // Calculate paid amount, including cheque cleared
+        // Calculate total paid amount (include cleared cash and cheque payments)
         let rawPaid = 0;
         inv.payment_history.forEach(payment => {
             if (
@@ -208,7 +214,7 @@ export const getDashboardDataByRange = async (range) => {
             }
         });
 
-        // Cap paid at invoiceTotal
+        // Cap paid at invoice total
         const invoicePaid = Math.min(invoiceTotal, rawPaid);
         monthlyData[month].total_paid_amount += invoicePaid;
 
@@ -216,11 +222,14 @@ export const getDashboardDataByRange = async (range) => {
         const invoicePending = invoiceTotal - invoicePaid;
         monthlyData[month].total_pending_amount += invoicePending > 0 ? invoicePending : 0;
 
-        // Count invoices correctly based on pending amount
-        if (invoicePending <= 0) {
-            monthlyData[month].paid_invoice_count += 1; // fully paid
-        } else {
-            monthlyData[month].pending_invoice_count += 1; // has pending
+        // Count invoices by status
+        // Use InvoiceStatus enum if available, otherwise determine dynamically
+        const status = inv.status; // "PAID", "PENDING", "PARTIALLY_PAID"
+
+        if (status === "PAID") {
+            monthlyData[month].paid_invoice_count += 1;
+        } else if (status === "PENDING" || status === "PARTIALLY_PAID") {
+            monthlyData[month].pending_invoice_count += 1;
         }
     });
 
