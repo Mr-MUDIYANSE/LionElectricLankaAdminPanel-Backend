@@ -94,25 +94,23 @@ export const getAllMetaData = async (year, month) => {
 
         invoiceList.forEach((inv) => {
             // Calculate total invoice amount considering returned quantities
-            let invoiceTotal = 0;
-            inv.invoice_items.forEach(item => {
+            let invoiceTotal = inv.invoice_items.reduce((itemSum, item) => {
                 const soldQty = item.qty - (item.returned_qty || 0);
-                const itemTotal = soldQty * item.selling_price - (item.discount_amount || 0);
-                invoiceTotal += itemTotal;
-            });
+                const perUnitDiscount = item.qty ? (item.discount_amount || 0) / item.qty : 0;
+                const itemRevenue = soldQty * (item.selling_price - perUnitDiscount);
+                return itemSum + itemRevenue;
+            }, 0);
 
             totalAmount += invoiceTotal;
 
             // Calculate cleared payments
             let clearedPaid = inv.payment_history.reduce((sum, p) => {
-                if (p.payment_type === "CASH" && p.status === "CLEARED") return sum + p.paid_amount;
-                if (p.payment_type === "CHEQUE" && p.chequeDetail?.status === "CLEARED") return sum + p.paid_amount;
+                if (p.payment_type === "CASH" && p.status === "CLEARED") return sum + (p.paid_amount || 0);
+                if (p.payment_type === "CHEQUE" && p.chequeDetail?.status === "CLEARED") return sum + (p.paid_amount || 0);
                 return sum;
             }, 0);
 
-            // Don't allow paid > invoiceTotal (after return deduction)
             clearedPaid = Math.min(clearedPaid, invoiceTotal);
-
             totalPaidAmount += clearedPaid;
 
             const pending = invoiceTotal - clearedPaid;
