@@ -348,12 +348,12 @@ export const createInvoices = async (customerId, data) => {
 };
 
 export const updatedInvoices = async (invoiceId, data) => {
-    const {paid_amount, payment_type, chequeDetail} = data;
+    const { paid_amount, payment_type, chequeDetail } = data;
 
     const errors = [];
     if (!invoiceId) errors.push("Invoice ID is required.");
     if (paid_amount == null || isNaN(paid_amount) || paid_amount < 0) errors.push("Valid paid amount is required.");
-    const validPaymentTypes = ["CASH", "CHEQUE"];
+    const validPaymentTypes = ["CASH", "CHEQUE", "RETURN"];
     if (!payment_type || !validPaymentTypes.includes(payment_type)) {
         errors.push(`Invalid payment type. Must be one of: ${validPaymentTypes.join(", ")}`);
     }
@@ -370,10 +370,10 @@ export const updatedInvoices = async (invoiceId, data) => {
 
     // Fetch the invoice
     const invoice = await DB.invoice.findUnique({
-        where: {id: invoiceId},
+        where: { id: invoiceId },
         include: {
             invoice_items: true,
-            payment_history: {include: {chequeDetail: true}}
+            payment_history: { include: { chequeDetail: true } }
         }
     });
 
@@ -383,52 +383,62 @@ export const updatedInvoices = async (invoiceId, data) => {
         throw error;
     }
 
-    // Calculate total already paid (ignore rejected or expired cheques)
-    const totalPaid = invoice.payment_history.reduce((sum, ph) => {
-        if (
-            ph.payment_type === "CHEQUE" &&
-            (ph.status === "REJECTED" || ph.status === "EXPIRED")
-        ) {
-            return sum; // skip these
-        }
-        return sum + ph.paid_amount;
-    }, 0);
-
+    // Calculate total invoice amount (respecting returned_qty)
     let totalAmount = 0;
-
     invoice.invoice_items.forEach(item => {
-        const soldQty = item.qty - (item.returned_qty || 0); // exclude returned qty
-        const perUnitDiscount = (item.discount_amount || 0) / item.qty; // distribute discount per unit
-        const itemTotal = soldQty * (item.selling_price - perUnitDiscount);
-        totalAmount += itemTotal;
+        const soldQty = item.qty - (item.returned_qty || 0);
+        const perUnitDiscount = (item.discount_amount || 0) / item.qty;
+        totalAmount += soldQty * (item.selling_price - perUnitDiscount);
     });
 
+    // Calculate totalPaid (consider returns and cheque rules)
+    const totalPaid = invoice.payment_history.reduce((sum, ph) => {
+        // skip invalid cheques
+        if (ph.payment_type === "CHEQUE" && (ph.status === "REJECTED" || ph.status === "EXPIRED")) {
+            return sum;
+        }
+
+        if (ph.status === "RETURN") {
+            return sum - Math.abs(ph.paid_amount); // returns decrease paid
+        }
+
+        if (ph.status === "CLEARED") {
+            return sum + ph.paid_amount;
+        }
+
+        return sum;
+    }, 0);
+
     // Prevent overpayment
-    if (totalPaid + Number(paid_amount) > totalAmount) {
+    if (totalPaid + (payment_type !== "RETURN" ? Number(paid_amount) : 0) > totalAmount) {
         const error = new Error("Paid amount exceeds total invoice amount.");
         error.status = 400;
-        error.errors = [`Total paid (${totalPaid + Number(paid_amount)}) cannot exceed invoice total (${invoice.total_amount})`];
+        error.errors = [`Total paid (${totalPaid + Number(paid_amount)}) cannot exceed invoice total (${totalAmount})`];
         throw error;
     }
 
     // Decide invoice status
     let invoiceStatus = "PENDING";
+    let newPaymentStatus = "PENDING";
 
     if (payment_type === "CASH") {
-        const totalPaid = invoice.payment_history.reduce((sum, ph) => {
-            if (ph.payment_type === "CHEQUE" && (ph.status === "REJECTED" || ph.status === "EXPIRED")) {
-                return sum;
-            }
-            return sum + ph.paid_amount;
-        }, 0) + paid_amount;
-
-        if (totalPaid === totalAmount) {
-            invoiceStatus = "PAID";
-        } else if (totalPaid > 0) {
-            invoiceStatus = "PARTIALLY_PAID";
-        }
+        newPaymentStatus = "CLEARED";
     } else if (payment_type === "CHEQUE") {
-        invoiceStatus = "PENDING"; // always pending until cheque cleared
+        newPaymentStatus = "PENDING"; // until cleared
+    } else if (payment_type === "RETURN") {
+        newPaymentStatus = "RETURN";
+    }
+
+    const finalPaid = totalPaid + (payment_type === "RETURN" ? -Math.abs(paid_amount) : paid_amount);
+
+    if (totalAmount === 0) {
+        invoiceStatus = "PAID";
+    } else if (finalPaid === totalAmount) {
+        invoiceStatus = "PAID";
+    } else if (finalPaid > 0 && finalPaid < totalAmount) {
+        invoiceStatus = "PARTIALLY_PAID";
+    } else {
+        invoiceStatus = "PENDING";
     }
 
     // Create a new payment history entry
@@ -437,7 +447,7 @@ export const updatedInvoices = async (invoiceId, data) => {
             invoice_id: invoiceId,
             paid_amount: Number(paid_amount),
             payment_type,
-            status: payment_type === "CASH" ? "CLEARED" : "PENDING",
+            status: newPaymentStatus,
             ...(payment_type === "CHEQUE" && chequeDetail
                 ? {
                     chequeDetail: {
@@ -450,16 +460,16 @@ export const updatedInvoices = async (invoiceId, data) => {
                 }
                 : {})
         },
-        include: {chequeDetail: true}
+        include: { chequeDetail: true }
     });
 
     // Update invoice status
     const updatedInvoice = await DB.invoice.update({
-        where: {id: invoiceId},
-        data: {status: invoiceStatus},
+        where: { id: invoiceId },
+        data: { status: invoiceStatus },
         include: {
             invoice_items: true,
-            payment_history: {include: {chequeDetail: true}}
+            payment_history: { include: { chequeDetail: true } }
         }
     });
 
