@@ -184,8 +184,9 @@ export const getDashboardDataByRange = async (range) => {
     };
 
     const monthlyData = {};
+
     invoices.forEach(inv => {
-        const month = inv.created_at.toLocaleString("default", {month: "short"});
+        const month = inv.created_at.toLocaleString("default", { month: "short" });
 
         if (!monthlyData[month]) {
             monthlyData[month] = {
@@ -218,7 +219,7 @@ export const getDashboardDataByRange = async (range) => {
         // Pending amount
         const invoicePending = Math.max(invoiceTotal - invoicePaid, 0);
 
-        // Aggregate amounts by month based on invoice status
+        // Aggregate amounts by invoice status
         if (inv.status === "PAID") {
             monthlyData[month].total_paid_amount += invoicePaid;
             monthlyData[month].paid_invoice_count += 1;
@@ -226,11 +227,7 @@ export const getDashboardDataByRange = async (range) => {
             monthlyData[month].total_pending_amount += invoicePending;
             monthlyData[month].pending_invoice_count += 1;
         }
-
-        // Also add total amount (for reference)
-        monthlyData[month].total_amount += invoiceTotal;
     });
-
 
     const allCustomers = await DB.customer.findMany();
 
