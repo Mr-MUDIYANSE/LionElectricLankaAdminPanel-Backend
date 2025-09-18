@@ -692,7 +692,7 @@ export const createProductReturn = async (data) => {
     });
 
 // exclude RETURN type payments
-    const validPayments = updatedPaymentHistory.filter(ph => ph.status !== "RETURN");
+    const validPayments = updatedPaymentHistory.filter(ph => ph.status === "CLEARED");
 
     const totalPaid = validPayments.reduce(
         (sum, ph) => sum + (ph.paid_amount || 0),
