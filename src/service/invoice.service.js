@@ -353,7 +353,7 @@ export const updatedInvoices = async (invoiceId, data) => {
     const errors = [];
     if (!invoiceId) errors.push("Invoice ID is required.");
     if (paid_amount == null || isNaN(paid_amount) || paid_amount < 0) errors.push("Valid paid amount is required.");
-    const validPaymentTypes = ["CASH", "CHEQUE", "RETURN"];
+    const validPaymentTypes = ["CASH", "CHEQUE"];
     if (!payment_type || !validPaymentTypes.includes(payment_type)) {
         errors.push(`Invalid payment type. Must be one of: ${validPaymentTypes.join(", ")}`);
     }
@@ -383,7 +383,18 @@ export const updatedInvoices = async (invoiceId, data) => {
         throw error;
     }
 
-    // Calculate total invoice amount (respecting returned_qty)
+    // Calculate total already paid (ignore RETURN + rejected/expired cheques)
+    const totalPaid = invoice.payment_history.reduce((sum, ph) => {
+        if (
+            ph.status === "RETURN" || // skip RETURN
+            (ph.payment_type === "CHEQUE" && (ph.status === "REJECTED" || ph.status === "EXPIRED"))
+        ) {
+            return sum;
+        }
+        return sum + ph.paid_amount;
+    }, 0);
+
+    // Calculate total invoice amount (respecting returned qty on items)
     let totalAmount = 0;
     invoice.invoice_items.forEach(item => {
         const soldQty = item.qty - (item.returned_qty || 0);
@@ -391,54 +402,37 @@ export const updatedInvoices = async (invoiceId, data) => {
         totalAmount += soldQty * (item.selling_price - perUnitDiscount);
     });
 
-    // Calculate totalPaid (consider returns and cheque rules)
-    const totalPaid = invoice.payment_history.reduce((sum, ph) => {
-        // skip invalid cheques
-        if (ph.payment_type === "CHEQUE" && (ph.status === "REJECTED" || ph.status === "EXPIRED")) {
-            return sum;
-        }
-
-        if (ph.status === "RETURN") {
-            return sum - Math.abs(ph.paid_amount); // returns decrease paid
-        }
-
-        if (ph.status === "CLEARED") {
-            return sum + ph.paid_amount;
-        }
-
-        return sum;
-    }, 0);
-
     // Prevent overpayment
-    if (totalPaid + (payment_type !== "RETURN" ? Number(paid_amount) : 0) > totalAmount) {
+    if (totalPaid + Number(paid_amount) > totalAmount) {
         const error = new Error("Paid amount exceeds total invoice amount.");
         error.status = 400;
-        error.errors = [`Total paid (${totalPaid + Number(paid_amount)}) cannot exceed invoice total (${totalAmount})`];
+        error.errors = [
+            `Total paid (${totalPaid + Number(paid_amount)}) cannot exceed invoice total (${totalAmount})`
+        ];
         throw error;
     }
 
     // Decide invoice status
     let invoiceStatus = "PENDING";
-    let newPaymentStatus = "PENDING";
 
     if (payment_type === "CASH") {
-        newPaymentStatus = "CLEARED";
+        const newTotalPaid = invoice.payment_history.reduce((sum, ph) => {
+            if (
+                ph.status === "RETURN" ||
+                (ph.payment_type === "CHEQUE" && (ph.status === "REJECTED" || ph.status === "EXPIRED"))
+            ) {
+                return sum;
+            }
+            return sum + ph.paid_amount;
+        }, 0) + paid_amount;
+
+        if (newTotalPaid === totalAmount) {
+            invoiceStatus = "PAID";
+        } else if (newTotalPaid > 0) {
+            invoiceStatus = "PARTIALLY_PAID";
+        }
     } else if (payment_type === "CHEQUE") {
-        newPaymentStatus = "PENDING"; // until cleared
-    } else if (payment_type === "RETURN") {
-        newPaymentStatus = "RETURN";
-    }
-
-    const finalPaid = totalPaid + (payment_type === "RETURN" ? -Math.abs(paid_amount) : paid_amount);
-
-    if (totalAmount === 0) {
-        invoiceStatus = "PAID";
-    } else if (finalPaid === totalAmount) {
-        invoiceStatus = "PAID";
-    } else if (finalPaid > 0 && finalPaid < totalAmount) {
-        invoiceStatus = "PARTIALLY_PAID";
-    } else {
-        invoiceStatus = "PENDING";
+        invoiceStatus = "PENDING"; // always pending until cheque cleared
     }
 
     // Create a new payment history entry
@@ -447,7 +441,7 @@ export const updatedInvoices = async (invoiceId, data) => {
             invoice_id: invoiceId,
             paid_amount: Number(paid_amount),
             payment_type,
-            status: newPaymentStatus,
+            status: payment_type === "CASH" ? "CLEARED" : "PENDING",
             ...(payment_type === "CHEQUE" && chequeDetail
                 ? {
                     chequeDetail: {
