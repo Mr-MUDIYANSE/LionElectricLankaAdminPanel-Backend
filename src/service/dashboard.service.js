@@ -128,13 +128,12 @@ export const getDashboardDataByRange = async (range) => {
         // ---- Calculate invoice total with discount ----
         let invoiceTotal = 0;
         inv.invoice_items.forEach(item => {
-            const qtyToCalculate = Math.max(item.qty - (item.returned_qty || 0), 0);
-            const perUnitDiscount = (item.discount_amount || 0) / item.qty;
+            const qtyToCalculate = item.qty - item.returned_qty;
+            const perUnitDiscount = item.discount_amount / item.qty;
             invoiceTotal += qtyToCalculate * (item.selling_price - perUnitDiscount);
-
         });
 
-        customerSales[custName].total = invoiceTotal;
+        customerSales[custName].total += invoiceTotal;
 
         // ---- Paid calculation ----
         let paid = 0;
