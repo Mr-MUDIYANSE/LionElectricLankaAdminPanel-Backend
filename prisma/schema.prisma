@@ -175,11 +175,10 @@ model Stock {
 }
 
 model Invoice {
-  id           String   @id @unique
-  total_amount Float?
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-  customer_id  Int
+  id          String   @id @unique
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  customer_id Int
 
   status          InvoiceStatus     @default(PENDING)
   invoice_items   Invoice_Item[]

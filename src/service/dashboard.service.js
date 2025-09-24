@@ -66,7 +66,7 @@ export const getDashboardDataByRange = async (range) => {
         inv.invoice_items.forEach(item => {
             const cat = item.stock.product.main_category.name;
             if (!categorySales[cat]) categorySales[cat] = 0;
-            categorySales[cat] += item.qty;
+            categorySales[cat] += item.qty - item.returned_qty;
         });
     });
 
