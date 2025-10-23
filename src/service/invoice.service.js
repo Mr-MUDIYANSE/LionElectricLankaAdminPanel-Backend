@@ -1,6 +1,7 @@
 import DB from "../db/db.js";
-import {startOfMonth, endOfMonth} from 'date-fns';
+import { startOfMonth, endOfMonth } from 'date-fns';
 import cryptoRandomString from "crypto-random-string";
+import cron from "node-cron";
 
 export const getAllInvoices = async (date) => {
     let whereClause = {};
@@ -10,20 +11,20 @@ export const getAllInvoices = async (date) => {
         if (/^\d{4}-\d{2}$/.test(date)) {
             const start = new Date(`${date}-01T00:00:00`);
             const end = endOfMonth(start);
-            whereClause.created_at = {gte: start, lte: end};
+            whereClause.created_at = { gte: start, lte: end };
         }
         // Year only (e.g., '2025')
         else if (/^\d{4}$/.test(date)) {
             const year = parseInt(date);
             const start = new Date(`${year}-01-01T00:00:00`);
             const end = new Date(`${year}-12-31T23:59:59`);
-            whereClause.created_at = {gte: start, lte: end};
+            whereClause.created_at = { gte: start, lte: end };
         }
         // Full date (e.g., '2025-07-21')
         else if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
             const dayStart = new Date(`${date}T00:00:00`);
             const dayEnd = new Date(`${date}T23:59:59`);
-            whereClause.created_at = {gte: dayStart, lte: dayEnd};
+            whereClause.created_at = { gte: dayStart, lte: dayEnd };
         } else {
             throw new Error("Invalid date format. Use yyyy, yyyy-mm, or yyyy-mm-dd");
         }
@@ -39,7 +40,7 @@ export const getAllInvoices = async (date) => {
     }
 
     const invoices = await DB.invoice.findMany({
-        orderBy: {created_at: "desc"},
+        orderBy: { created_at: "desc" },
         where: whereClause,
         include: {
             customer: true,
@@ -81,9 +82,9 @@ export const getAllMetaData = async (year, month) => {
         include: {
             invoice_items: true,
             Product_Return: {
-                include: {return_item: true}
+                include: { return_item: true }
             },
-            payment_history: {include: {chequeDetail: true}}
+            payment_history: { include: { chequeDetail: true } }
         }
     });
 
@@ -131,7 +132,7 @@ export const getAllMetaData = async (year, month) => {
 
     // Overall data
     const overallData = calculateMeta(invoices);
-    const result = {data: overallData};
+    const result = { data: overallData };
 
     // Monthly / Yearly data
     if (year) {
@@ -167,7 +168,7 @@ export const getInvoiceById = async (invoiceId) => {
     }
 
     const invoice = await DB.invoice.findUnique({
-        where: {id: invoiceId},
+        where: { id: invoiceId },
         include: {
             customer: true,
             payment_history: {
@@ -214,13 +215,13 @@ export const getInvoiceById = async (invoiceId) => {
 };
 
 export const createInvoices = async (customerId, data) => {
-    const {paid_amount, payment_type, items, chequeDetail} = data;
+    const { paid_amount, payment_type, items, chequeDetail } = data;
 
     const errors = [];
     if (!customerId || isNaN(customerId)) errors.push("Valid customer ID required.");
 
     const customer = await DB.customer.findUnique({
-        where: {id: Number(customerId)}
+        where: { id: Number(customerId) }
     });
     if (!customer) {
         const error = new Error(`Customer not found for ID ${customerId}`);
@@ -256,8 +257,8 @@ export const createInvoices = async (customerId, data) => {
     // validate stock
     for (const item of items) {
         const stock = await DB.stock.findUnique({
-            where: {id: item.stock_id},
-            include: {product: true}
+            where: { id: item.stock_id },
+            include: { product: true }
         });
         if (!stock) throw new Error(`Stock ID ${item.stock_id} not found`);
         if (stock.qty < item.qty) {
@@ -290,9 +291,9 @@ export const createInvoices = async (customerId, data) => {
     }
 
     // generate invoice id
-    let uniqueId = cryptoRandomString({length: 15, type: "numeric"});
-    while (await DB.invoice.findUnique({where: {id: uniqueId}})) {
-        uniqueId = cryptoRandomString({length: 15, type: "numeric"});
+    let uniqueId = cryptoRandomString({ length: 15, type: "numeric" });
+    while (await DB.invoice.findUnique({ where: { id: uniqueId } })) {
+        uniqueId = cryptoRandomString({ length: 15, type: "numeric" });
     }
 
     // create invoice with nested items + payments
@@ -306,7 +307,7 @@ export const createInvoices = async (customerId, data) => {
                     qty: item.qty,
                     selling_price: item.selling_price,
                     discount_amount: item.discount_amount,
-                    stock: {connect: {id: item.stock_id}}
+                    stock: { connect: { id: item.stock_id } }
                 }))
             },
             payment_history: {
@@ -330,15 +331,15 @@ export const createInvoices = async (customerId, data) => {
         },
         include: {
             invoice_items: true,
-            payment_history: {include: {chequeDetail: true}}
+            payment_history: { include: { chequeDetail: true } }
         }
     });
 
     // update stock qty
     for (const item of items) {
         await DB.stock.update({
-            where: {id: item.stock_id},
-            data: {qty: {decrement: item.qty}}
+            where: { id: item.stock_id },
+            data: { qty: { decrement: item.qty } }
         });
     }
 
@@ -504,11 +505,11 @@ const recalculateInvoiceStatus = async (invoiceId) => {
 
     // Update invoice
     return DB.invoice.update({
-        where: {id: invoiceId},
-        data: {status: invoiceStatus},
+        where: { id: invoiceId },
+        data: { status: invoiceStatus },
         include: {
             invoice_items: true,
-            payment_history: {include: {chequeDetail: true}}
+            payment_history: { include: { chequeDetail: true } }
         }
     });
 };
@@ -539,9 +540,12 @@ export const updateChequePayment = async (paymentId, data) => {
         throw error;
     }
 
-    // Auto-expire if past cheque date
-    let finalStatus = status;
-    if (chequePayment.cheque_date && new Date(chequePayment.cheque_date) < new Date()) {
+    // Determine final status
+    let finalStatus = status || chequePayment.status;
+
+    // Auto-expire only if the cheque is pending and date is in the past
+    const isPastDate = chequePayment.cheque_date && new Date(chequePayment.cheque_date) < new Date();
+    if (chequePayment.status === "PENDING" && isPastDate) {
         finalStatus = "EXPIRED";
     }
 
@@ -578,8 +582,8 @@ export const getPaymentHistoryByInvoiceId = async (invoiceId) => {
     }
 
     const paymentHistory = await DB.payment_History.findMany({
-        where: {invoice_id: invoiceId},
-        include: {chequeDetail: true}
+        where: { invoice_id: invoiceId },
+        include: { chequeDetail: true }
     });
 
     if (!paymentHistory) {
@@ -592,7 +596,7 @@ export const getPaymentHistoryByInvoiceId = async (invoiceId) => {
 };
 
 export const createProductReturn = async (data) => {
-    const {invoice_id, product_id, return_qty, reason} = data;
+    const { invoice_id, product_id, return_qty, reason } = data;
 
     if (!invoice_id) {
         throw new Error("Invoice ID is required.");
@@ -606,7 +610,7 @@ export const createProductReturn = async (data) => {
 
     // Fetch the invoice with payment history and invoice items
     const invoice = await DB.invoice.findUnique({
-        where: {id: invoice_id},
+        where: { id: invoice_id },
         include: {
             invoice_items: {
                 include: {
@@ -665,8 +669,8 @@ export const createProductReturn = async (data) => {
 
     // Update the returned quantity for the invoice item
     await DB.invoice_Item.update({
-        where: {id: invoiceItem.id},
-        data: {returned_qty: {increment: return_qty}}
+        where: { id: invoiceItem.id },
+        data: { returned_qty: { increment: return_qty } }
     });
 
     // Find the stock item based on the product_id and get its ID
@@ -682,8 +686,8 @@ export const createProductReturn = async (data) => {
 
     // Restock the returned item in stock
     await DB.stock.update({
-        where: {id: stock.id},  // Use stock ID here
-        data: {qty: {increment: return_qty}}
+        where: { id: stock.id },  // Use stock ID here
+        data: { qty: { increment: return_qty } }
     });
 
     // Add payment history with negative amount for the refund
@@ -693,7 +697,7 @@ export const createProductReturn = async (data) => {
             payment_type: 'CASH',
             status: 'RETURN',
             invoice: {
-                connect: {id: invoice.id}  // Properly connect the invoice using its ID
+                connect: { id: invoice.id }  // Properly connect the invoice using its ID
             }
         }
     });
@@ -731,8 +735,8 @@ export const createProductReturn = async (data) => {
 
     // Update invoice
     await DB.invoice.update({
-        where: {id: invoice_id},
-        data: {status: updatedStatus}
+        where: { id: invoice_id },
+        data: { status: updatedStatus }
     });
 
     return {
@@ -743,3 +747,43 @@ export const createProductReturn = async (data) => {
         updatedStatus
     };
 };
+
+
+cron.schedule("0 10 * * *", async () => {
+    try {
+        const now = new Date();
+
+        // Find all pending cheques with past dates
+        const expiredCheques = await DB.cheque_Details.findMany({
+            where: {
+                status: "PENDING",
+                cheque_date: { lt: now }
+            }
+        });
+
+        for (const cheque of expiredCheques) {
+            await DB.cheque_Details.update({
+                where: { payment_id: cheque.payment_id },
+                data: { status: "EXPIRED" }
+            });
+
+            await DB.payment_History.update({
+                where: { id: cheque.payment_id },
+                data: { status: "EXPIRED" }
+            });
+
+            // Optional: Recalculate invoice status
+            const payment = await DB.payment_History.findUnique({
+                where: { id: cheque.payment_id },
+                include: { invoice: true }
+            });
+            if (payment?.invoice) {
+                await recalculateInvoiceStatus(payment.invoice.id);
+            }
+        }
+
+        // console.log(`${expiredCheques.length} cheques marked as EXPIRED.`);
+    } catch (err) {
+        console.error("Error running expiry job:", err);
+    }
+});
