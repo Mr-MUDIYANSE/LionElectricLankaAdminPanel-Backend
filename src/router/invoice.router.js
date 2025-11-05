@@ -1,6 +1,6 @@
 import {Router} from "express";
 import {
-    createInvoice,
+    createInvoice, deleteOneInvoice,
     getAllInvoice, getMetaData,
     getOneInvoice, getPaymentHistory, returnProduct,
     updateCheque,
@@ -17,5 +17,6 @@ invoiceRouter.post('/create/customer/:id', createInvoice);
 invoiceRouter.patch('/update/:id', updateInvoice);
 invoiceRouter.patch('/update/cheque/payment-history/:id', updateCheque);
 invoiceRouter.post('/returns', returnProduct);
+invoiceRouter.delete("/delete/:id", deleteOneInvoice);
 
 export default invoiceRouter;

@@ -1,5 +1,5 @@
 import {
-    createInvoices, createProductReturn,
+    createInvoices, createProductReturn, deleteInvoice,
     getAllInvoices, getAllMetaData,
     getInvoiceById, getPaymentHistoryByInvoiceId, updateChequePayment,
     updatedInvoices
@@ -256,6 +256,27 @@ export const returnProduct = async (req, res) => {
             success: false,
             message: "An error occurred while processing the return.",
             error: err.message || err
+        });
+    }
+};
+
+export const deleteOneInvoice = async (req, res) => {
+    const invoiceId = req.params.id;
+    try {
+        const result = await deleteInvoice(invoiceId);
+        return res.status(200).json({
+            success: true,
+            message: `Invoice ${invoiceId} deleted successfully.`,
+            data: result
+        });
+    } catch (err) {
+        console.error("Error deleting invoice:", err);
+        const status = err.status || 500;
+        return res.status(status).json({
+            success: false,
+            message: err.message || "Internal Server Error",
+            errors: err.errors || err.message || null,
+            data: null
         });
     }
 };

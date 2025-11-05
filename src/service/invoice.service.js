@@ -787,3 +787,115 @@ cron.schedule("0 11 * * *", async () => {
         console.error("Error running expiry job:", err);
     }
 });
+
+export const deleteInvoice = async (invoiceId) => {
+    if (!invoiceId) {
+        const err = new Error("Invoice ID is required");
+        err.status = 400;
+        throw err;
+    }
+
+    // Use a transaction so either everything is reverted or committed
+    return DB.$transaction(async (tx) => {
+        // Load invoice with all related data we need
+        const invoice = await tx.invoice.findUnique({
+            where: {id: invoiceId},
+            include: {
+                invoice_items: {
+                    include: {stock: true} // we need stock ids and current qty
+                },
+                payment_history: {
+                    include: {chequeDetail: true}
+                },
+                Product_Return: {
+                    include: {return_item: true}
+                }
+            }
+        });
+
+        if (!invoice) {
+            const error = new Error(`Invoice ${invoiceId} not found`);
+            error.status = 404;
+            throw error;
+        }
+
+        // 1) Revert stock for each invoice item:
+        //    stock was decremented by item.qty at invoice creation, and incremented by returns.
+        //    To fully remove invoice we should add back (item.qty - returned_qty).
+        const stockUpdates = [];
+        for (const item of invoice.invoice_items) {
+            const returnedQty = item.returned_qty || 0;
+            const netToRestore = item.qty - returnedQty;
+            if (netToRestore > 0) {
+                // increment stock by netToRestore
+                stockUpdates.push(
+                    tx.stock.update({
+                        where: {id: item.stock_id},
+                        data: {qty: {increment: netToRestore}}
+                    })
+                );
+            }
+        }
+        await Promise.all(stockUpdates);
+
+        // 2) Delete cheque details for payment_history entries that have them.
+        const chequeDeletes = [];
+        const paymentIds = invoice.payment_history.map(p => p.id);
+        for (const ph of invoice.payment_history) {
+            if (ph.chequeDetail) {
+                chequeDeletes.push(
+                    tx.cheque_Details.delete({
+                        where: {payment_id: ph.id}
+                    })
+                );
+            }
+        }
+        if (chequeDeletes.length) await Promise.all(chequeDeletes);
+
+        // 3) Delete payment history entries for this invoice
+        const deletedPayments = await tx.payment_History.deleteMany({
+            where: {invoice_id: invoiceId}
+        });
+
+        // 4) Delete return_items and product_Return records for this invoice
+        // Collect product_return ids
+        const productReturnIds = invoice.Product_Return.map(r => r.id);
+        if (productReturnIds.length) {
+            // delete return_item entries
+            await tx.return_Item.deleteMany({
+                where: {product_return_id: {in: productReturnIds}}
+            });
+
+            // delete product returns
+            await tx.product_Return.deleteMany({
+                where: {id: {in: productReturnIds}}
+            });
+        }
+
+        // 5) Delete invoice items
+        await tx.invoice_Item.deleteMany({
+            where: {invoice_id: invoiceId}
+        });
+
+        // 6) Finally delete the invoice itself
+        await tx.invoice.delete({
+            where: {id: invoiceId}
+        });
+
+        // optional: compute total refunded amounts previously created as negative payments
+        // (if you want to return that for logging)
+        // Note: these payment history records were deleted above, so re-query not possible here.
+        // If you need totals before deletion, compute them before deleting payment_history.
+        const totalRefunds = invoice.payment_history
+            .filter(ph => ph.paid_amount && ph.paid_amount < 0)
+            .reduce((sum, ph) => sum + ph.paid_amount, 0);
+
+        return {
+            deletedInvoiceId: invoiceId,
+            deletedPaymentCount: deletedPayments.count || 0,
+            deletedReturnCount: productReturnIds.length,
+            restoredStockCount: stockUpdates.length,
+            totalRefundsBeforeDelete: totalRefunds
+        };
+    });
+};
