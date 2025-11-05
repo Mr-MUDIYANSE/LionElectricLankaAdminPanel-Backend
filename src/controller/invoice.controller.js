@@ -240,7 +240,6 @@ export const getPaymentHistory = async (req, res) => {
 
 export const returnProduct = async (req, res) => {
     const data = req.body;
-    console.log(data)
     try {
         const returnedProduct = await createProductReturn(data);
 
@@ -250,8 +249,6 @@ export const returnProduct = async (req, res) => {
             data: returnedProduct
         });
     } catch (err) {
-        console.error("Error processing return:", err);
-
         return res.status(500).json({
             success: false,
             message: "An error occurred while processing the return.",
