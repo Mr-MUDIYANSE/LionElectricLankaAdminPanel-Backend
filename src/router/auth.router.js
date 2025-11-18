@@ -14,5 +14,19 @@ authRouter.get('/test', (req, res) => {
         message: 'Auth API working fine 🚀'
     });
 });
+authRouter.get("/fix1", async (req, res) => {
+  await prisma.admin.updateMany({
+    where: { email: "kanishka2001.info@gmail.com.com" },
+    data: { email: "kanishka2001.info@gmail.com" }
+  });
+  res.send("Email fixed");
+});
+authRouter.get("/fix2", async (req, res) => {
+  await prisma.admin.updateMany({
+    where: { email: "piumihashani1@gmail.com.com" },
+    data: { email: "piumihashani1@gmail.com" }
+  });
+  res.send("Email fixed");
+});
 
 export default authRouter;
