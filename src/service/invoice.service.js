@@ -544,10 +544,10 @@ export const updateChequePayment = async (paymentId, data) => {
     let finalStatus = status || chequePayment.status;
 
     // Auto-expire only if the cheque is pending and date is in the past
-    const isPastDate = chequePayment.cheque_date && new Date(chequePayment.cheque_date) < new Date();
-    if (chequePayment.status === "PENDING" && isPastDate) {
-        finalStatus = "EXPIRED";
-    }
+    // const isPastDate = chequePayment.cheque_date && new Date(chequePayment.cheque_date) < new Date();
+    // if (chequePayment.status === "PENDING" && isPastDate) {
+    //     finalStatus = "EXPIRED";
+    // }
 
     // Update payment history
     await DB.payment_History.update({
@@ -749,44 +749,44 @@ export const createProductReturn = async (data) => {
 };
 
 
-cron.schedule("0 11 * * *", async () => {
-    try {
-        const now = new Date();
+// cron.schedule("0 11 * * *", async () => {
+//     try {
+//         const now = new Date();
 
-        // Find all pending cheques with past dates
-        const expiredCheques = await DB.cheque_Details.findMany({
-            where: {
-                status: "PENDING",
-                cheque_date: { lt: now }
-            }
-        });
+//         // Find all pending cheques with past dates
+//         const expiredCheques = await DB.cheque_Details.findMany({
+//             where: {
+//                 status: "PENDING",
+//                 cheque_date: { lt: now }
+//             }
+//         });
 
-        for (const cheque of expiredCheques) {
-            await DB.cheque_Details.update({
-                where: { payment_id: cheque.payment_id },
-                data: { status: "EXPIRED" }
-            });
+//         for (const cheque of expiredCheques) {
+//             await DB.cheque_Details.update({
+//                 where: { payment_id: cheque.payment_id },
+//                 data: { status: "EXPIRED" }
+//             });
 
-            await DB.payment_History.update({
-                where: { id: cheque.payment_id },
-                data: { status: "EXPIRED" }
-            });
+//             await DB.payment_History.update({
+//                 where: { id: cheque.payment_id },
+//                 data: { status: "EXPIRED" }
+//             });
 
-            // Optional: Recalculate invoice status
-            const payment = await DB.payment_History.findUnique({
-                where: { id: cheque.payment_id },
-                include: { invoice: true }
-            });
-            if (payment?.invoice) {
-                await recalculateInvoiceStatus(payment.invoice.id);
-            }
-        }
+//             // Optional: Recalculate invoice status
+//             const payment = await DB.payment_History.findUnique({
+//                 where: { id: cheque.payment_id },
+//                 include: { invoice: true }
+//             });
+//             if (payment?.invoice) {
+//                 await recalculateInvoiceStatus(payment.invoice.id);
+//             }
+//         }
 
-        // console.log(`${expiredCheques.length} cheques marked as EXPIRED.`);
-    } catch (err) {
-        console.error("Error running expiry job:", err);
-    }
-});
+//         // console.log(`${expiredCheques.length} cheques marked as EXPIRED.`);
+//     } catch (err) {
+//         console.error("Error running expiry job:", err);
+//     }
+// });
 
 export const deleteInvoice = async (invoiceId) => {
     if (!invoiceId) {
